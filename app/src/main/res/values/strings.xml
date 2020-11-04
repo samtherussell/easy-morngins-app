@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Easy Mornings</string>
+    <string name="instant_on">on instantly</string>
+    <string name="instant_off">off instantly</string>
+    <string name="fade_on">fade on</string>
+    <string name="fade_off">fade off</string>
+    <string name="fading_on">fading on</string>
+    <string name="fading_off">fading off</string>
+    <string name="add_time_on">add time to fade on slowly</string>
+    <string name="add_time_off">add time to fade off slowly</string>
+    <string name="minute">min</string>
+    <string name="second">sec</string>
+    <string name="plus5sec">+5 sec</string>
+    <string name="plus1min">+1 min</string>
+    <string name="plus5min">+5 min</string>
+</resources>
