@@ -2,18 +2,22 @@ package com.example.easymornings;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
-
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import com.example.easymornings.LightConnector.LightState;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-
+    ScheduledExecutorService executor;
+    ScheduledFuture<?> fetchStatusTask;
     LightManager lightManager;
     TextView switchHint;
     ImageView mainSwitch, onButton, offButton;
@@ -44,16 +48,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         plus5min = findViewById(R.id.plus5min);
         plus5min.setOnClickListener(this);
 
-        LightConnector lightConnector = new LightConnector();
+        Handler uiUpdateHandler = new Handler(message -> {
+            lightManager.changeState((LightState) message.obj);
+            return true;
+        });
 
-        lightManager = new LightManager(lightConnector, this::update);
+        LightConnector lightConnector = new LightConnector("10.0.2.2", 8080);
 
+        lightManager = new LightManager(lightConnector, this::update, uiUpdateHandler);
+
+        executor = Executors.newSingleThreadScheduledExecutor();
+        scheduleFetchStatus();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (fetchStatusTask != null)
+            fetchStatusTask.cancel(true);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        lightManager.checkLightState();
+        if (fetchStatusTask == null || fetchStatusTask.isCancelled())
+            scheduleFetchStatus();
+    }
+
+    private void scheduleFetchStatus() {
+        fetchStatusTask = executor.scheduleAtFixedRate(lightManager::checkLightState, 0, 1, TimeUnit.SECONDS);
     }
 
     @Override
@@ -84,7 +107,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    void update(LightState lightState, Integer fadeTime) {
+    synchronized void update(LightState lightState, Integer fadeTime) {
+        System.out.println("update");
         updateSlider(lightState);
         updateSwitchHint(lightState, fadeTime);
         updateTimeButtons(lightState);
@@ -122,8 +146,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void updateMainButtonPosition(int sp) {
         ConstraintLayout.LayoutParams mainSwitch = ((ConstraintLayout.LayoutParams) this.mainSwitch.getLayoutParams());
-        mainSwitch.setMarginStart(spToPx(sp));
-        this.mainSwitch.setLayoutParams(mainSwitch);
+        int px = spToPx(sp);
+        System.out.println(String.format("%d %d %d", sp, px, mainSwitch.getMarginStart()));
+        if (mainSwitch.getMarginStart() != px) {
+            mainSwitch.setMarginStart(px);
+            this.mainSwitch.setLayoutParams(mainSwitch);
+        }
     }
 
     public int spToPx(float sp) {

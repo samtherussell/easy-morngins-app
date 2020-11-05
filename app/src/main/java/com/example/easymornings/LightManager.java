@@ -1,6 +1,11 @@
 package com.example.easymornings;
 
+
+import android.os.Handler;
+import android.os.Message;
+
 import java.util.function.BiConsumer;
+
 import com.example.easymornings.LightConnector.LightState;
 
 public class LightManager {
@@ -9,18 +14,22 @@ public class LightManager {
     final BiConsumer<LightState, Integer> updateView;
     LightState lightState;
     int fadeTime;
+    Handler uiUpdateHandler;
 
-    LightManager(LightConnector lightConnector, BiConsumer<LightState, Integer> updateView) {
+    LightManager(LightConnector lightConnector, BiConsumer<LightState, Integer> updateView, Handler uiUpdateHandler) {
         this.lightConnector = lightConnector;
         this.updateView = updateView;
+        this.uiUpdateHandler = uiUpdateHandler;
         this.fadeTime = 0;
-        checkLightState();
-
+        this.lightState = LightState.OFF;
         updateView.accept(this.lightState, this.fadeTime);
     }
 
     public void checkLightState() {
-        lightState = lightConnector.getLightState();
+        lightConnector.getLightState().thenAccept(state -> {
+            if (lightState != state)
+                Message.obtain(uiUpdateHandler, 1, state).sendToTarget();
+        });
     }
 
     void addFadeTime(int amount) {
@@ -28,12 +37,7 @@ public class LightManager {
         updateView.accept(lightState, fadeTime);
     }
 
-    void reset() {
-        fadeTime = 0;
-        updateView.accept(lightState, fadeTime);
-    }
-
-    private void changeState(LightState lightState) {
+    void changeState(LightState lightState) {
         this.lightState = lightState;
         this.fadeTime = 0;
         this.updateView.accept(this.lightState, this.fadeTime);
