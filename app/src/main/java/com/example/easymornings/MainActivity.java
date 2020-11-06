@@ -1,9 +1,12 @@
 package com.example.easymornings;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.util.TypedValue;
 import android.view.View;
@@ -14,25 +17,17 @@ import android.widget.Toast;
 
 import com.example.easymornings.LightConnector.LightState;
 
-import java.time.LocalDateTime;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.Locale;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    public static final int CHANGE_STATE = 0x1;
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, Handler.Callback {
     public static final int UPDATE_TIME = 0x2;
     public static final int CONNECTION_FAILURE = 0x3;
     ScheduledExecutorService executor;
     ScheduledFuture<?> updateTask;
     Handler uiUpdateHandler;
     LightManager lightManager;
-    TextView switchHint, clockTime;
+    TextView switchHint;
     ImageView mainSwitch, onButton, offButton;
     Button plus5sec, plus1min, plus5min;
 
@@ -42,7 +37,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
 
         switchHint = findViewById(R.id.switchhint);
-        clockTime = findViewById(R.id.clockTime);
 
         mainSwitch = findViewById(R.id.sliderbutton);
         mainSwitch.setOnClickListener(this);
@@ -62,51 +56,37 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         plus5min = findViewById(R.id.plus5min);
         plus5min.setOnClickListener(this);
 
-        uiUpdateHandler = new Handler(message -> {
-            if (message.what == CHANGE_STATE)
-                lightManager.changeState((LightState) message.obj);
-            else if (message.what == UPDATE_TIME)
-                this.updateTime();
-            else if (message.what == CONNECTION_FAILURE)
-                Toast.makeText(getApplicationContext(), "Could not connect to light", Toast.LENGTH_LONG).show();
-            else
-                return false;
-            return true;
-        });
+        uiUpdateHandler = new Handler(Looper.myLooper(), this);
 
         LightConnector lightConnector = new LightConnector("10.0.2.2", 8080);
 
         lightManager = new LightManager(lightConnector, this::updateLightState, uiUpdateHandler);
-
-        executor = Executors.newSingleThreadScheduledExecutor();
-        scheduleUpdate();
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        if (updateTask != null)
-            updateTask.cancel(true);
+    public boolean handleMessage(@NonNull Message message) {
+        if (message.what == CONNECTION_FAILURE) {
+            Toast.makeText(getApplicationContext(), (String) message.obj, Toast.LENGTH_LONG).show();
+            return true;
+        }
+        return false;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (updateTask == null || updateTask.isCancelled())
-            scheduleUpdate();
+        uiUpdateHandler.post(this::updateState);
     }
 
-    private void scheduleUpdate() {
-        updateTask = executor.scheduleAtFixedRate(this::checkUpdate, 0, 1, TimeUnit.SECONDS);
+    @Override
+    protected void onPause() {
+        super.onPause();
+        uiUpdateHandler.removeCallbacksAndMessages(null);
     }
 
-    public void checkUpdate() {
-        checkTime();
+    public void updateState() {
         lightManager.checkLightState();
-    }
-
-    public void checkTime() {
-        Message.obtain(uiUpdateHandler, UPDATE_TIME).sendToTarget();
+        uiUpdateHandler.postDelayed(this::updateState, 1000);
     }
 
     @Override
@@ -135,14 +115,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else if(id == R.id.plus5min) {
             lightManager.addFadeTime(5 * 60);
         }
-    }
-
-    void updateTime() {
-        LocalDateTime now = LocalDateTime.now();
-        int hour = now.getHour();
-        int minute = now.getMinute();
-        String text = String.format("%02d:%02d", hour, minute);
-        clockTime.setText(text);
     }
 
     synchronized void updateLightState(LightState lightState, Integer fadeTime) {
@@ -217,6 +189,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case FADING_ON:
                 message = getString(R.string.fading_on);
                 break;
+            case NOT_CONNECTED:
+                message = getString(R.string.notconnected);
+                break;
             default:
                 message = "bad light state";
         }
@@ -227,11 +202,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         int minutes = seconds / 60;
         seconds = seconds % 60;
         if (minutes > 0 && seconds > 0)
-            return String.format("%d:%d", minutes, seconds);
+            return String.format("%d:%02d", minutes, seconds);
         else if (minutes > 0)
             return String.format("%d %s", minutes, getString(R.string.minute));
         else
             return String.format("%d %s", seconds, getString(R.string.second));
     }
-
 }

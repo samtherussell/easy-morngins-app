@@ -29,7 +29,7 @@ public class LightManager {
     public void checkLightState() {
         lightConnector.getLightState().thenAccept(state -> {
             if (lightState != state)
-                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, state).sendToTarget();
+                uiUpdateHandler.post(() -> changeState(state));
         });
     }
 
@@ -47,45 +47,45 @@ public class LightManager {
     void onNow() {
         lightConnector.onNow().thenAccept((success) -> {
             if (success)
-                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.ON).sendToTarget();
+                uiUpdateHandler.post(() -> changeState(LightState.ON));
             else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
         });
     }
 
     void onTimer(int period) {
         lightConnector.onTimer(period).thenAccept((success) -> {
             if (success)
-                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.ON).sendToTarget();
+                uiUpdateHandler.post(() -> changeState(LightState.ON));
             else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
         });
     }
 
     void fadeOnNow(int period) {
         lightConnector.fadeOnNow(period).thenAccept((success) -> {
             if (success)
-                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.FADING_ON).sendToTarget();
+                uiUpdateHandler.post(() -> changeState(LightState.FADING_ON));
             else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
         });
     }
 
     void offNow() {
         lightConnector.offNow().thenAccept((success) -> {
             if (success)
-                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.OFF).sendToTarget();
+                uiUpdateHandler.post(() -> changeState(LightState.OFF));
             else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
         });
     }
 
     void fadeOffNow(int period) {
         lightConnector.fadeOffNow(period).thenAccept((success) -> {
             if (success)
-                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.FADING_OFF).sendToTarget();
+                uiUpdateHandler.post(() -> changeState(LightState.FADING_OFF));
             else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
         });
     }
 

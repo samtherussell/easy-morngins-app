@@ -1,15 +1,21 @@
 package com.example.easymornings;
 
 import android.util.JsonReader;
+
+import cz.msebera.android.httpclient.client.config.RequestConfig;
 import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
 import cz.msebera.android.httpclient.client.methods.HttpGet;
 import cz.msebera.android.httpclient.client.methods.HttpPost;
-import cz.msebera.android.httpclient.client.methods.HttpUriRequest;
+import cz.msebera.android.httpclient.client.methods.HttpRequestBase;
+import cz.msebera.android.httpclient.client.utils.URIBuilder;
 import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
 import cz.msebera.android.httpclient.impl.client.HttpClients;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -27,7 +33,7 @@ public class LightConnector {
         this.port = port;
     }
 
-    enum LightState {OFF, FADING_ON, ON, FADING_OFF, TIMED_ON}
+    enum LightState {OFF, FADING_ON, ON, FADING_OFF, TIMED_ON, NOT_CONNECTED}
 
     private LightState parseLightState(String lightState) {
         switch (lightState) {
@@ -49,63 +55,85 @@ public class LightConnector {
     public CompletableFuture<LightState> getLightState() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String response = get(simpleUri("status"));
-                return parseLightState(getString(response, "state"));
+                String response = get(simpleUri("/status"));
+                return parseLightState(getStringFromJson(response, "state"));
             } catch (IOException e) {
                 e.printStackTrace();
-                return LightState.OFF;
+                return LightState.NOT_CONNECTED;
             }
         }, executor);
     }
 
     CompletableFuture<Boolean> onNow() {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("on")), executor);
+        return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("/on")), executor);
     }
 
     CompletableFuture<Boolean> onTimer(int period) {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("on-timer", period)), executor);
+        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("/on-timer", period)), executor);
     }
 
     CompletableFuture<Boolean> fadeOnNow(int period) {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("fade-on", period)), executor);
+        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("/fade-on", period)), executor);
     }
 
     CompletableFuture<Boolean> offNow() {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("off")), executor);
+        return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("/off")), executor);
     }
 
     CompletableFuture<Boolean> fadeOffNow(int period) {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("fade-off", period)), executor);
+        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("/fade-off", period)), executor);
     }
 
-    boolean postAndCheck(String path) {
+    boolean postAndCheck(URI path) {
         try {
             return checkResponse(post(path));
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
 
-    String post(String uri) throws IOException {
+    String post(URI uri) throws IOException {
         return execute(new HttpPost(uri));
     }
 
-    String get(String uri) throws IOException {
+    String get(URI uri) throws IOException {
         return execute(new HttpGet(uri));
     }
 
-    String simpleUri(String path) {
-        return String.format("http://%s:%d/%s", ip, port, path);
+    URI simpleUri(String path) {
+        try {
+            return new URIBuilder()
+                    .setScheme("http")
+                    .setHost(ip)
+                    .setPort(port)
+                    .setPath(path)
+                    .build();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
-    String uriWithSeconds(String path, int seconds) {
-        return String.format("%s?seconds=%d", simpleUri(path), seconds);
+    URI uriWithSeconds(String path, int seconds) {
+        try {
+            return new URIBuilder()
+                    .setScheme("http")
+                    .setHost(ip)
+                    .setPort(port)
+                    .setPath(path)
+                    .addParameter("seconds", String.valueOf(seconds))
+                    .build();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
-    String execute(HttpUriRequest request) throws IOException {
-        CloseableHttpClient httpclient = HttpClients.createDefault();
-        CloseableHttpResponse response = httpclient.execute(request);
+    String execute(HttpRequestBase request) throws IOException {
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        request.setConfig(RequestConfig.custom().setConnectTimeout(1000).build());
+        CloseableHttpResponse response = httpClient.execute(request);
         InputStream content = response.getEntity().getContent();
         byte[] bytes = new byte[content.available()];
         content.read(bytes);
@@ -113,11 +141,11 @@ public class LightConnector {
     }
 
     boolean checkResponse(String response) {
-        return getBool(response, "success");
+        return getBoolFromJson(response, "success");
 
     }
 
-    boolean getBool(String json, String name) {
+    boolean getBoolFromJson(String json, String name) {
         JsonReader jsonReader = new JsonReader(new StringReader(json));
         try {
             jsonReader.beginObject();
@@ -131,7 +159,7 @@ public class LightConnector {
         }
     }
 
-    String getString(String response, String name) {
+    String getStringFromJson(String response, String name) {
         JsonReader jsonReader = new JsonReader(new StringReader(response));
         try {
             jsonReader.beginObject();

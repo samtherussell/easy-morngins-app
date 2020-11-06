@@ -50,6 +50,18 @@
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/ic_alarmclock" />
 
+    <TextClock
+        android:id="@+id/clockTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/white"
+        android:textSize="70sp"
+        android:format12Hour="h:mm"
+        app:layout_constraintBottom_toBottomOf="@+id/alarmclockimage"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/alarmclockimage" />
+
     <ImageView
         android:id="@+id/sliderbg"
         android:layout_width="200sp"
@@ -93,18 +105,6 @@
         app:srcCompat="@android:drawable/ic_media_ff" />
 
     <TextView
-        android:id="@+id/clockTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="00:00"
-        android:textColor="@color/white"
-        android:textSize="70sp"
-        app:layout_constraintBottom_toBottomOf="@+id/alarmclockimage"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/alarmclockimage" />
-
-    <TextView
         android:id="@+id/buttonhint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -118,7 +118,6 @@
         android:id="@+id/switchhint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="30sp"
         android:textSize="25sp"
         android:textColor="#AAAAAA"
         app:layout_constraintEnd_toEndOf="parent"
