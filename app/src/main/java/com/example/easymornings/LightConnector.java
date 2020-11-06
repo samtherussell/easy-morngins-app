@@ -58,24 +58,24 @@ public class LightConnector {
         }, executor);
     }
 
-    void onNow() {
-        CompletableFuture.runAsync(() -> postAndCheck(simpleUri("on")), executor);
+    CompletableFuture<Boolean> onNow() {
+        return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("on")), executor);
     }
 
-    void onTimer(int period) {
-        CompletableFuture.runAsync(() -> postAndCheck(uriWithSeconds("on-timer", period)), executor);
+    CompletableFuture<Boolean> onTimer(int period) {
+        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("on-timer", period)), executor);
     }
 
-    void fadeOnNow(int period) {
-        CompletableFuture.runAsync(() -> postAndCheck(uriWithSeconds("fade-on", period)), executor);
+    CompletableFuture<Boolean> fadeOnNow(int period) {
+        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("fade-on", period)), executor);
     }
 
-    void offNow() {
-        CompletableFuture.runAsync(() -> postAndCheck(simpleUri("off")), executor);
+    CompletableFuture<Boolean> offNow() {
+        return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("off")), executor);
     }
 
-    void fadeOffNow(int period) {
-        CompletableFuture.runAsync(() -> postAndCheck(uriWithSeconds("fade-off", period)), executor);
+    CompletableFuture<Boolean> fadeOffNow(int period) {
+        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("fade-off", period)), executor);
     }
 
     boolean postAndCheck(String path) {

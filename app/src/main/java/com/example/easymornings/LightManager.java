@@ -3,6 +3,7 @@ package com.example.easymornings;
 
 import android.os.Handler;
 import android.os.Message;
+import android.widget.Toast;
 
 import java.util.function.BiConsumer;
 
@@ -28,7 +29,7 @@ public class LightManager {
     public void checkLightState() {
         lightConnector.getLightState().thenAccept(state -> {
             if (lightState != state)
-                Message.obtain(uiUpdateHandler, 1, state).sendToTarget();
+                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, state).sendToTarget();
         });
     }
 
@@ -44,23 +45,48 @@ public class LightManager {
     }
 
     void onNow() {
-        lightConnector.onNow();
-        changeState(LightState.ON);
+        lightConnector.onNow().thenAccept((success) -> {
+            if (success)
+                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.ON).sendToTarget();
+            else
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+        });
+    }
+
+    void onTimer(int period) {
+        lightConnector.onTimer(period).thenAccept((success) -> {
+            if (success)
+                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.ON).sendToTarget();
+            else
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+        });
     }
 
     void fadeOnNow(int period) {
-        lightConnector.fadeOnNow(period);
-        changeState(LightState.FADING_ON);
+        lightConnector.fadeOnNow(period).thenAccept((success) -> {
+            if (success)
+                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.FADING_ON).sendToTarget();
+            else
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+        });
     }
 
     void offNow() {
-        lightConnector.offNow();
-        changeState(LightState.OFF);
+        lightConnector.offNow().thenAccept((success) -> {
+            if (success)
+                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.OFF).sendToTarget();
+            else
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+        });
     }
 
     void fadeOffNow(int period) {
-        lightConnector.fadeOffNow(period);
-        changeState(LightState.FADING_OFF);
+        lightConnector.fadeOffNow(period).thenAccept((success) -> {
+            if (success)
+                Message.obtain(uiUpdateHandler, MainActivity.CHANGE_STATE, LightState.FADING_OFF).sendToTarget();
+            else
+                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE).sendToTarget();
+        });
     }
 
 }
