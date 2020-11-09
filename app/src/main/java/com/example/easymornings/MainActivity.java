@@ -17,15 +17,9 @@ import android.widget.Toast;
 
 import com.example.easymornings.LightConnector.LightState;
 
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, Handler.Callback {
-    public static final int UPDATE_TIME = 0x2;
     public static final int CONNECTION_FAILURE = 0x3;
-    ScheduledExecutorService executor;
-    ScheduledFuture<?> updateTask;
-    Handler uiUpdateHandler;
+    Handler uiHandler;
     LightManager lightManager;
     TextView switchHint;
     ImageView mainSwitch, onButton, offButton;
@@ -56,11 +50,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         plus5min = findViewById(R.id.plus5min);
         plus5min.setOnClickListener(this);
 
-        uiUpdateHandler = new Handler(Looper.myLooper(), this);
+        uiHandler = new Handler(Looper.myLooper(), this);
 
         LightConnector lightConnector = new LightConnector("10.0.2.2", 8080);
 
-        lightManager = new LightManager(lightConnector, this::updateLightState, uiUpdateHandler);
+        lightManager = new LightManager(lightConnector, this::updateLightState, uiHandler);
     }
 
     @Override
@@ -75,18 +69,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onResume() {
         super.onResume();
-        uiUpdateHandler.post(this::updateState);
+        uiHandler.post(this::updateState);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        uiUpdateHandler.removeCallbacksAndMessages(null);
+        uiHandler.removeCallbacksAndMessages(null);
     }
 
     public void updateState() {
         lightManager.checkLightState();
-        uiUpdateHandler.postDelayed(this::updateState, 1000);
+        uiHandler.postDelayed(this::updateState, 1000);
     }
 
     @Override
