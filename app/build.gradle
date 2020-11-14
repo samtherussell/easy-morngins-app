@@ -30,6 +30,7 @@ android {
 
 dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
+    compileOnly 'org.projectlombok:lombok:1.18.16'
     implementation 'cz.msebera.android:httpclient:4.4.1.1'
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'com.google.android.material:material:1.1.0'
