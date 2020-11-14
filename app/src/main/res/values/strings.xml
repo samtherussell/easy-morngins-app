@@ -38,4 +38,6 @@
     <string name="connection_successful">Connection successful</string>
     <string name="saved">Saved</string>
     <string name="action_failed">Could not perform action</string>
+    <string name="dismiss">D I S M I S S</string>
+    <string name="sleep">SLEEP</string>
 </resources>

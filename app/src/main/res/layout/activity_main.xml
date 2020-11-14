@@ -133,4 +133,27 @@
         app:layout_constraintTop_toTopOf="parent"
         />
 
+    <Button
+        android:id="@+id/dismiss"
+        android:layout_width="55sp"
+        android:layout_height="300sp"
+        android:text="@string/dismiss"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_margin="10sp"
+        />
+
+    <Button
+        android:id="@+id/sleep"
+        android:layout_width="55sp"
+        android:layout_height="300sp"
+        android:text="@string/sleep"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_margin="10sp"
+        android:orientation="vertical"
+        />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

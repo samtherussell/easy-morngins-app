@@ -1,14 +1,21 @@
 package com.example.easymornings;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.app.TimePickerDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.CompoundButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.Calendar;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -33,15 +40,9 @@ public class SetAlarm extends AppCompatActivity {
 
         SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
 
-        long alarmTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_ALARM_TIME, 0);
-        alarm = findViewById(R.id.time);
-        alarm.setText(getAbsoluteTimeString(alarmTime));
-        long fadeInTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_FADE_IN_TIME, 0);
-        before = findViewById(R.id.before);
-        before.setText(getTimeString(alarmTime - fadeInTime));
-        long offTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_OFF_TIME, 0);
-        after = findViewById(R.id.after);
-        after.setText(getTimeString(offTime - alarmTime));
+        alarm = setupTextView(R.id.time, sharedPreferences, AppPreferences.SHARED_PREFERENCES_ALARM_TIME);
+        before = setupTextView(R.id.before, sharedPreferences, AppPreferences.SHARED_PREFERENCES_FADE_IN_TIME);
+        after = setupTextView(R.id.after, sharedPreferences, AppPreferences.SHARED_PREFERENCES_OFF_TIME);
 
         enabled = setupCompoundButton(R.id.enabled, sharedPreferences, AppPreferences.SHARED_PREFERENCES_ENABLED);
         monday = setupCompoundButton(R.id.monday, sharedPreferences, AppPreferences.SHARED_PREFERENCES_MONDAY);
@@ -51,7 +52,6 @@ public class SetAlarm extends AppCompatActivity {
         friday = setupCompoundButton(R.id.friday, sharedPreferences, AppPreferences.SHARED_PREFERENCES_FRIDAY);
         saturday = setupCompoundButton(R.id.saturday, sharedPreferences, AppPreferences.SHARED_PREFERENCES_SATURDAY);
         sunday = setupCompoundButton(R.id.sunday, sharedPreferences, AppPreferences.SHARED_PREFERENCES_SUNDAY);
-
     }
 
     CompoundButton setupCompoundButton(int id, SharedPreferences sharedPreferences, String sharedPreferenceName) {
@@ -61,14 +61,98 @@ public class SetAlarm extends AppCompatActivity {
         return button;
     }
 
-    String getAbsoluteTimeString(long now) {
-        LocalTime time = LocalDateTime.ofInstant(Instant.ofEpochMilli(now * 1000), ZoneId.systemDefault()).toLocalTime();
-        int hour = time.getHour();
-        int minute = time.getMinute();
+    TextView setupTextView(int id, SharedPreferences sharedPreferences, String sharedPreferenceName) {
+        TextView view = findViewById(id);
+        long timestamp = sharedPreferences.getLong(sharedPreferenceName, 0);
+        view.setText(getAbsoluteTimeString(getHour(timestamp), getMinute(timestamp)));
+        view.setOnClickListener(v -> openTimePickerDialog(sharedPreferenceName, view));
+        return view;
+    }
+
+    private void openTimePickerDialog(String sharedPreferenceName, TextView view) {
+        SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
+        long alarmTime = sharedPreferences.getLong(sharedPreferenceName, 0);
+        new TimePickerDialog(SetAlarm.this, (d, hour, min) -> {
+            view.setText(getAbsoluteTimeString(hour, min));
+            sharedPreferences.edit().putLong(sharedPreferenceName, getTimestamp(hour, min)).commit();
+            resetAlarms(this);
+            Toast.makeText(getApplicationContext(), "Alarm Changed", Toast.LENGTH_SHORT).show();
+        }, getHour(alarmTime), getMinute(alarmTime), true).show();
+    }
+
+    public static void resetAlarms(Context context) {
+        resetFadeInAlarm(context);
+        resetSoundAlarm(context);
+        resetOffAlarm(context);
+    }
+
+    public static void resetFadeInAlarm(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(context);
+        long onTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_FADE_IN_TIME, 0);
+        long alarmTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_ALARM_TIME, 0);
+        int fadeTime = (int) (alarmTime - onTime);
+
+        Intent onIntent = new Intent(context, MainActivity.class);
+        onIntent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.FADE_ON_COMMAND);
+        onIntent.putExtra(MainActivity.FADE_IN_EXTRA, fadeTime);
+        PendingIntent onPendingIntent = PendingIntent.getActivity(context, MainActivity.FADE_ON_COMMAND, onIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(onTime), onPendingIntent);
+    }
+
+    public static void resetSoundAlarm(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(context);
+        long alarmTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_ALARM_TIME, 0);
+
+        Intent soundsIntent = new Intent(context, MainActivity.class);
+        soundsIntent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SOUND_START_COMMAND);
+        PendingIntent soundPendingIntent = PendingIntent.getActivity(context, MainActivity.SOUND_START_COMMAND, soundsIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(alarmTime), soundPendingIntent);
+    }
+
+    public static void resetOffAlarm(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(context);
+        long offTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_OFF_TIME, 0);
+
+        Intent offIntent = new Intent(context, MainActivity.class);
+        offIntent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.ALL_OFF_COMMAND);
+        PendingIntent offPendingIntent = PendingIntent.getActivity(context, MainActivity.ALL_OFF_COMMAND, offIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(offTime), offPendingIntent);
+
+    }
+
+    public static long getNextAlarmMillis(long timestamp) {
+        int hour = getHour(timestamp);
+        int minute = getMinute(timestamp);
+        Calendar now = Calendar.getInstance();
+        if (now.get(Calendar.HOUR_OF_DAY) > hour || now.get(Calendar.HOUR_OF_DAY) == hour && now.get(Calendar.MINUTE) >= minute) {
+            now.add(Calendar.DATE, 1);
+        }
+        now.set(Calendar.HOUR_OF_DAY, hour);
+        now.set(Calendar.MINUTE, minute);
+        now.set(Calendar.SECOND, 0);
+        return now.getTimeInMillis();
+    }
+
+    private static int getMinute(long time) {
+        return (int) ((time / 60) % 60);
+    }
+
+    private static int getHour(long time) {
+        return (int) (time / (60 * 60));
+    }
+
+    private static long getTimestamp(int hour, int minute) {
+        return (long) (hour * 60 + minute) * 60;
+    }
+
+    private String getAbsoluteTimeString(int hour, int minute) {
         return String.format("%02d:%02d", hour, minute);
     }
 
-    String getTimeString(long seconds) {
+    private String getTimeString(long seconds) {
         long minutes = seconds / 60;
         seconds = seconds % 60;
         if (minutes > 0 && seconds > 0)
@@ -78,5 +162,6 @@ public class SetAlarm extends AppCompatActivity {
         else
             return String.format("%d %s", seconds, getString(R.string.second));
     }
+
 
 }

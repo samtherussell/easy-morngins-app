@@ -18,7 +18,7 @@ public class LightManager {
     LightManager(LightConnector lightConnector) {
         this.lightConnector = lightConnector;
         this.fadeTime = 0;
-        this.lightState = LightState.OFF;
+        this.lightState = LightState.UNDEFINED;
     }
 
     public CompletableFuture<Optional<LightState>> checkLightState() {

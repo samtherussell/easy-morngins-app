@@ -26,4 +26,25 @@ public class AppPreferences {
         return context.getSharedPreferences(SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
     }
 
+    static String getDayOfWeekPreferenceName(int dayOfWeek) {
+        switch (dayOfWeek) {
+            case 0:
+                return SHARED_PREFERENCES_MONDAY;
+            case 1:
+                return SHARED_PREFERENCES_TUESDAY;
+            case 2:
+                return SHARED_PREFERENCES_WEDNESDAY;
+            case 3:
+                return SHARED_PREFERENCES_THURSDAY;
+            case 4:
+                return SHARED_PREFERENCES_FRIDAY;
+            case 5:
+                return SHARED_PREFERENCES_SATURDAY;
+            case 6:
+                return SHARED_PREFERENCES_SUNDAY;
+            default:
+                throw new RuntimeException();
+        }
+    }
+
 }

@@ -33,7 +33,7 @@ public class LightConnector {
         this.getIP = getIP;
     }
 
-    enum LightState {OFF, FADING_ON, ON, FADING_OFF, TIMED_ON, NOT_CONNECTED}
+    enum LightState {UNDEFINED, OFF, FADING_ON, ON, FADING_OFF, TIMED_ON, NOT_CONNECTED}
 
     private LightState parseLightState(String lightState) {
         switch (lightState) {
