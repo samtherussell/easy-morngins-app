@@ -1,91 +1,82 @@
 package com.example.easymornings;
 
-
-import android.os.Handler;
-import android.os.Message;
-import android.widget.Toast;
-
-import java.util.function.BiConsumer;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import com.example.easymornings.LightConnector.LightState;
+
+import lombok.Getter;
 
 public class LightManager {
 
     final LightConnector lightConnector;
-    final BiConsumer<LightState, Integer> updateView;
+    @Getter
     LightState lightState;
+    @Getter
     int fadeTime;
-    Handler uiUpdateHandler;
 
-    LightManager(LightConnector lightConnector, BiConsumer<LightState, Integer> updateView, Handler uiUpdateHandler) {
+    LightManager(LightConnector lightConnector) {
         this.lightConnector = lightConnector;
-        this.updateView = updateView;
-        this.uiUpdateHandler = uiUpdateHandler;
         this.fadeTime = 0;
         this.lightState = LightState.OFF;
-        updateView.accept(this.lightState, this.fadeTime);
     }
 
-    public void checkLightState() {
-        lightConnector.getLightState().thenAccept(state -> {
-            if (lightState != state)
-                uiUpdateHandler.post(() -> changeState(state));
+    public CompletableFuture<Optional<LightState>> checkLightState() {
+        return lightConnector.getLightState().thenApply(state -> {
+            if (lightState != state) {
+                changeState(state);
+                return Optional.of(state);
+            } else
+                return Optional.empty();
         });
     }
 
     void addFadeTime(int amount) {
         fadeTime += amount;
-        updateView.accept(lightState, fadeTime);
     }
 
     void changeState(LightState lightState) {
         this.lightState = lightState;
         this.fadeTime = 0;
-        this.updateView.accept(this.lightState, this.fadeTime);
     }
 
-    void onNow() {
-        lightConnector.onNow().thenAccept((success) -> {
+    CompletableFuture<Boolean> onNow() {
+        return lightConnector.onNow().thenApply((success) -> {
             if (success)
-                uiUpdateHandler.post(() -> changeState(LightState.ON));
-            else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
+                changeState(LightState.ON);
+            return success;
         });
     }
 
-    void onTimer(int period) {
-        lightConnector.onTimer(period).thenAccept((success) -> {
+    CompletableFuture<Boolean> onTimer(int period) {
+        return lightConnector.onTimer(period).thenApply((success) -> {
             if (success)
-                uiUpdateHandler.post(() -> changeState(LightState.ON));
-            else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
+                changeState(LightState.ON);
+            return success;
         });
     }
 
-    void fadeOnNow(int period) {
-        lightConnector.fadeOnNow(period).thenAccept((success) -> {
+    CompletableFuture<Boolean> fadeOnNow(int period) {
+        return lightConnector.fadeOnNow(period).thenApply((success) -> {
             if (success)
-                uiUpdateHandler.post(() -> changeState(LightState.FADING_ON));
-            else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
+                changeState(LightState.FADING_ON);
+            return success;
         });
     }
 
-    void offNow() {
-        lightConnector.offNow().thenAccept((success) -> {
+    CompletableFuture<Boolean> offNow() {
+        return lightConnector.offNow().thenApply((success) -> {
             if (success)
-                uiUpdateHandler.post(() -> changeState(LightState.OFF));
-            else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
+                changeState(LightState.OFF);
+            return success;
         });
     }
 
-    void fadeOffNow(int period) {
-        lightConnector.fadeOffNow(period).thenAccept((success) -> {
+    CompletableFuture<Boolean> fadeOffNow(int period) {
+        return lightConnector.fadeOffNow(period).thenApply((success) -> {
             if (success)
-                uiUpdateHandler.post(() -> changeState(LightState.FADING_OFF));
-            else
-                Message.obtain(uiUpdateHandler, MainActivity.CONNECTION_FAILURE, "Could not connect to light").sendToTarget();
+                changeState(LightState.FADING_OFF);
+            return success;
         });
     }
 

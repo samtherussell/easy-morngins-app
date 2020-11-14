@@ -19,18 +19,18 @@ import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 
 public class LightConnector {
 
     final Executor executor;
-    final String ip;
-    final int port;
+    final Supplier<String> getIP;
+    final static int PORT = 8080;
 
-    LightConnector(String ip, int port) {
+    LightConnector(Supplier<String> getIP) {
         executor = Executors.newSingleThreadExecutor();
-        this.ip = ip;
-        this.port = port;
+        this.getIP = getIP;
     }
 
     enum LightState {OFF, FADING_ON, ON, FADING_OFF, TIMED_ON, NOT_CONNECTED}
@@ -105,8 +105,8 @@ public class LightConnector {
         try {
             return new URIBuilder()
                     .setScheme("http")
-                    .setHost(ip)
-                    .setPort(port)
+                    .setHost(getIP.get())
+                    .setPort(PORT)
                     .setPath(path)
                     .build();
         } catch (URISyntaxException e) {
@@ -119,8 +119,8 @@ public class LightConnector {
         try {
             return new URIBuilder()
                     .setScheme("http")
-                    .setHost(ip)
-                    .setPort(port)
+                    .setHost(getIP.get())
+                    .setPort(PORT)
                     .setPath(path)
                     .addParameter("seconds", String.valueOf(seconds))
                     .build();
@@ -171,10 +171,6 @@ public class LightConnector {
             e.printStackTrace();
             return null;
         }
-    }
-
-    static long now() {
-        return System.currentTimeMillis()/1000;
     }
 
 }
