@@ -21,13 +21,11 @@ public class LightManager {
         this.lightState = LightState.UNDEFINED;
     }
 
-    public CompletableFuture<Optional<LightState>> checkLightState() {
+    public CompletableFuture<Boolean> checkLightState() {
         return lightConnector.getLightState().thenApply(state -> {
-            if (lightState != state) {
+            if (lightState != state)
                 changeState(state);
-                return Optional.of(state);
-            } else
-                return Optional.empty();
+            return lightState != state;
         });
     }
 

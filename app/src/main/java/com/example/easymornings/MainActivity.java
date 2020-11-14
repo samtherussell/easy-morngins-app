@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void checkLightState() {
-        lightManager.checkLightState().thenAccept(r -> r.ifPresent(s -> uiHandler.post(this::updateUI)));
+        lightManager.checkLightState().thenAccept(r -> { if (r) uiHandler.post(this::updateUI); });
         uiHandler.postDelayed(this::checkLightState, 1000);
     }
 
