@@ -77,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
 
         uiHandler = new Handler(Looper.myLooper());
 
-        LightConnector lightConnector = new LightConnector(this::getIPAdress);
+        LightConnector lightConnector = new LightConnector(this::getIPAddress);
 
         lightManager = new LightManager(lightConnector);
 
@@ -161,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
         uiHandler.postDelayed(this::checkLightState, 1000);
     }
 
-    String getIPAdress() {
+    String getIPAddress() {
         SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
         return sharedPreferences.getString(AppPreferences.SHARED_PREFERENCES_IP_ADDRESS, "");
     }
