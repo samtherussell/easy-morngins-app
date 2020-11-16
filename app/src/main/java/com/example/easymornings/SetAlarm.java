@@ -57,7 +57,11 @@ public class SetAlarm extends AppCompatActivity {
     CompoundButton setupCompoundButton(int id, SharedPreferences sharedPreferences, String sharedPreferenceName) {
         CompoundButton button = findViewById(id);
         button.setChecked(sharedPreferences.getBoolean(sharedPreferenceName, true));
-        button.setOnCheckedChangeListener((v, isChecked) -> sharedPreferences.edit().putBoolean(sharedPreferenceName, isChecked).commit());
+        button.setOnCheckedChangeListener((v, isChecked) -> {
+            sharedPreferences.edit().putBoolean(sharedPreferenceName, isChecked).commit();
+            resetAlarms(this);
+            Toast.makeText(getApplicationContext(), "Alarm Changed", Toast.LENGTH_SHORT).show();
+        });
         return button;
     }
 
@@ -93,43 +97,55 @@ public class SetAlarm extends AppCompatActivity {
         long alarmTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_ALARM_TIME, 0);
         int fadeTime = (int) (alarmTime - onTime);
 
-        Intent onIntent = new Intent(context, MainActivity.class);
-        onIntent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.FADE_ON_COMMAND);
-        onIntent.putExtra(MainActivity.FADE_IN_EXTRA, fadeTime);
-        PendingIntent onPendingIntent = PendingIntent.getActivity(context, MainActivity.FADE_ON_COMMAND, onIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(onTime), onPendingIntent);
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.FADE_ON_COMMAND);
+        intent.putExtra(MainActivity.FADE_IN_EXTRA, fadeTime);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, MainActivity.FADE_ON_COMMAND, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        if (sharedPreferences.getBoolean(AppPreferences.SHARED_PREFERENCES_ENABLED, true))
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(onTime, context), pendingIntent);
+        else
+            alarmManager.cancel(pendingIntent);
     }
 
     public static void resetSoundAlarm(Context context) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(context);
-        long alarmTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_ALARM_TIME, 0);
+        long time = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_ALARM_TIME, 0);
 
-        Intent soundsIntent = new Intent(context, MainActivity.class);
-        soundsIntent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SOUND_START_COMMAND);
-        PendingIntent soundPendingIntent = PendingIntent.getActivity(context, MainActivity.SOUND_START_COMMAND, soundsIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(alarmTime), soundPendingIntent);
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SOUND_START_COMMAND);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, MainActivity.SOUND_START_COMMAND, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        if (sharedPreferences.getBoolean(AppPreferences.SHARED_PREFERENCES_ENABLED, true))
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(time, context), pendingIntent);
+        else
+            alarmManager.cancel(pendingIntent);
     }
 
     public static void resetOffAlarm(Context context) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(context);
-        long offTime = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_OFF_TIME, 0);
+        long time = sharedPreferences.getLong(AppPreferences.SHARED_PREFERENCES_OFF_TIME, 0);
 
-        Intent offIntent = new Intent(context, MainActivity.class);
-        offIntent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.ALL_OFF_COMMAND);
-        PendingIntent offPendingIntent = PendingIntent.getActivity(context, MainActivity.ALL_OFF_COMMAND, offIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(offTime), offPendingIntent);
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.ALL_OFF_COMMAND);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, MainActivity.ALL_OFF_COMMAND, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        if (sharedPreferences.getBoolean(AppPreferences.SHARED_PREFERENCES_ENABLED, true))
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, getNextAlarmMillis(time, context), pendingIntent);
+        else
+            alarmManager.cancel(pendingIntent);
 
     }
 
-    public static long getNextAlarmMillis(long timestamp) {
+    public static long getNextAlarmMillis(long timestamp, Context context) {
         int hour = getHour(timestamp);
         int minute = getMinute(timestamp);
         Calendar now = Calendar.getInstance();
         if (now.get(Calendar.HOUR_OF_DAY) > hour || now.get(Calendar.HOUR_OF_DAY) == hour && now.get(Calendar.MINUTE) >= minute) {
             now.add(Calendar.DATE, 1);
         }
+        SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(context);
+        while (!sharedPreferences.getBoolean(AppPreferences.getDayOfWeekPreferenceName(now.get(Calendar.DAY_OF_WEEK)), true))
+            now.add(Calendar.DATE, 1);
         now.set(Calendar.HOUR_OF_DAY, hour);
         now.set(Calendar.MINUTE, minute);
         now.set(Calendar.SECOND, 0);

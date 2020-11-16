@@ -23,9 +23,11 @@ public class LightManager {
 
     public CompletableFuture<Boolean> checkLightState() {
         return lightConnector.getLightState().thenApply(state -> {
-            if (lightState != state)
+            if (lightState != state) {
                 changeState(state);
-            return lightState != state;
+                return true;
+            } else
+                return false;
         });
     }
 

@@ -131,28 +131,32 @@
         app:srcCompat="@android:drawable/ic_menu_preferences"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginRight="10sp"
+        android:layout_marginTop="10sp"
         />
 
     <Button
         android:id="@+id/dismiss"
         android:layout_width="55sp"
-        android:layout_height="300sp"
+        android:layout_height="200sp"
         android:text="@string/dismiss"
         android:textSize="20sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_margin="10sp"
+        android:layout_marginLeft="10sp"
+        android:layout_marginTop="50sp"
         />
 
     <Button
         android:id="@+id/sleep"
         android:layout_width="55sp"
-        android:layout_height="300sp"
+        android:layout_height="200sp"
         android:text="@string/sleep"
         android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_margin="10sp"
+        android:layout_marginRight="10sp"
+        android:layout_marginTop="50sp"
         android:orientation="vertical"
         />
 

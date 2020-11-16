@@ -20,7 +20,6 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import java.util.Calendar;
 
 import com.example.easymornings.LightConnector.LightState;
 
@@ -70,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
 
         dismiss = findViewById(R.id.dismiss);
         dismiss.setVisibility(View.GONE);
-        dismiss.setOnClickListener(v -> stopAlarm());
+        dismiss.setOnClickListener(v -> dismissAlarm());
         sleep = findViewById(R.id.sleep);
         sleep.setVisibility(View.GONE);
         sleep.setOnClickListener(v -> onSleepClick());
@@ -83,19 +82,10 @@ public class MainActivity extends AppCompatActivity {
 
         Bundle extras = getIntent().getExtras();
         runCommand(extras);
-
     }
 
     private void runCommand(Bundle extras) {
         if (extras != null && extras.containsKey(COMMAND_EXTRA)) {
-
-            SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
-            if (!sharedPreferences.getBoolean(AppPreferences.SHARED_PREFERENCES_ENABLED, false))
-                return;
-
-            int i = Calendar.getInstance().get(Calendar.DAY_OF_WEEK);
-            if (i == 0 && !sharedPreferences.getBoolean(AppPreferences.getDayOfWeekPreferenceName(i), false))
-                return;
 
             int command = extras.getInt(COMMAND_EXTRA);
             switch (command) {
@@ -134,10 +124,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    void stopAlarm() {
-        mediaPlayer.stop();
+    void dismissAlarm() {
+        if (mediaPlayer != null && mediaPlayer.isPlaying())
+            mediaPlayer.stop();
         dismiss.setVisibility(View.GONE);
         sleep.setVisibility(View.GONE);
+        cancelSleepAlarm();
     }
 
     void notifyActionFailed() {
@@ -181,12 +173,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onSleepClick() {
-        stopAlarm();
+        mediaPlayer.stop();
+        sleep.setVisibility(View.GONE);
+        scheduleSleepAlarm(60);
+    }
+
+    private void scheduleSleepAlarm(int seconds) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        Intent offIntent = new Intent(this, MainActivity.class);
-        offIntent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SLEEP_SOUND_COMMAND);
-        PendingIntent offPendingIntent = PendingIntent.getActivity(this, MainActivity.SLEEP_SOUND_COMMAND, offIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 5000, offPendingIntent);
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SLEEP_SOUND_COMMAND);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, MainActivity.SLEEP_SOUND_COMMAND, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + seconds*1000, pendingIntent);
+    }
+
+    private void cancelSleepAlarm() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SLEEP_SOUND_COMMAND);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, MainActivity.SLEEP_SOUND_COMMAND, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        alarmManager.cancel(pendingIntent);
     }
 
     private void addFadeTime(int amount) {
