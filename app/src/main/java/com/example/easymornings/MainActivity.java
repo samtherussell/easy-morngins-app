@@ -11,6 +11,7 @@ import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -115,7 +116,17 @@ public class MainActivity extends AppCompatActivity {
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build();
-            mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.alarm, audioAttributes, audioManager.generateAudioSessionId());
+
+            SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
+            String uriString = sharedPreferences.getString(AppPreferences.SHARED_PREFERENCES_SOUND, null);
+            if (uriString != null) {
+                mediaPlayer = MediaPlayer.create(this, Uri.parse(uriString), null, audioAttributes, audioManager.generateAudioSessionId());
+            }
+
+            if (mediaPlayer == null) {
+                mediaPlayer = MediaPlayer.create(this, R.raw.alarm, audioAttributes, audioManager.generateAudioSessionId());
+            }
+
             mediaPlayer.start();
             mediaPlayer.setLooping(true);
 

@@ -1,29 +1,37 @@
 package com.example.easymornings;
 
+import android.Manifest;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.Calendar;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 public class SetAlarm extends AppCompatActivity {
 
+    private static final int SOUND_CHOOSER_REQUEST_CODE = 50;
+    private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 51;
     TextView alarm;
     TextView before;
     TextView after;
+    TextView currentSound;
     CompoundButton monday;
     CompoundButton tuesday;
     CompoundButton wednesday;
@@ -32,6 +40,7 @@ public class SetAlarm extends AppCompatActivity {
     CompoundButton saturday;
     CompoundButton sunday;
     CompoundButton enabled;
+    Button changeSound;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +61,17 @@ public class SetAlarm extends AppCompatActivity {
         friday = setupCompoundButton(R.id.friday, sharedPreferences, AppPreferences.SHARED_PREFERENCES_FRIDAY);
         saturday = setupCompoundButton(R.id.saturday, sharedPreferences, AppPreferences.SHARED_PREFERENCES_SATURDAY);
         sunday = setupCompoundButton(R.id.sunday, sharedPreferences, AppPreferences.SHARED_PREFERENCES_SUNDAY);
+
+        currentSound = findViewById(R.id.currentsound);
+        String sound = sharedPreferences.getString(AppPreferences.SHARED_PREFERENCES_SOUND, "None");
+        if (!sound.equals("None")) {
+            Ringtone ringtone = RingtoneManager.getRingtone(getApplicationContext(), Uri.parse(sound));
+            sound = ringtone.getTitle(this);
+        }
+        currentSound.setText(sound);
+
+        changeSound = findViewById(R.id.changesound);
+        changeSound.setOnClickListener(v -> onChangeSound());
     }
 
     CompoundButton setupCompoundButton(int id, SharedPreferences sharedPreferences, String sharedPreferenceName) {
@@ -82,6 +102,46 @@ public class SetAlarm extends AppCompatActivity {
             resetAlarms(this);
             Toast.makeText(getApplicationContext(), "Alarm Changed", Toast.LENGTH_SHORT).show();
         }, getHour(alarmTime), getMinute(alarmTime), true).show();
+    }
+
+    private void onChangeSound() {
+        Intent intent = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
+        intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM);
+        intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound");
+        this.startActivityForResult(intent, SOUND_CHOOSER_REQUEST_CODE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == -1 && requestCode == SOUND_CHOOSER_REQUEST_CODE) {
+            final Uri uri = data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
+            if (uri != null) {
+                Ringtone ringtone = RingtoneManager.getRingtone(getApplicationContext(), uri);
+                String name = ringtone.getTitle(this);
+                SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
+                sharedPreferences.edit().putString(AppPreferences.SHARED_PREFERENCES_SOUND, uri.toString()).commit();
+                currentSound.setText(name);
+
+                if (uri.toString().contains("external")) {
+                    int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
+                    if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, PERMISSION_REQUEST_READ_EXTERNAL_STORAGE);
+                    }
+                }
+                Toast.makeText(getApplicationContext(), "Alarm Sounds Changed", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(final int requestCode, @NonNull final String[] permissions, @NonNull final int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_READ_EXTERNAL_STORAGE) {
+            if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(getApplicationContext(), "Will not be able to play chosen sound", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     public static void resetAlarms(Context context) {

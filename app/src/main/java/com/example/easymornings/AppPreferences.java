@@ -21,6 +21,7 @@ public class AppPreferences {
 
     public static final String SHARED_PREFERENCES_IP_ADDRESS = "SHARED_PREFERENCES_IP_ADDRESS";
 
+    public static final String SHARED_PREFERENCES_SOUND = "SHARED_PREFERENCES_SOUND";
 
     static SharedPreferences getSharePreferences(Context context) {
         return context.getSharedPreferences(SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
