@@ -1,18 +1,12 @@
 package com.example.easymornings;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 
 import android.os.Handler;
-import android.view.View;
-import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -23,10 +17,10 @@ public class Settings extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
+        SharedPreferences sharedPreferences = getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
 
         EditText text = findViewById(R.id.ipaddress);
-        text.setText(sharedPreferences.getString(AppPreferences.SHARED_PREFERENCES_IP_ADDRESS, ""));
+        text.setText(sharedPreferences.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
         Handler uiHandler = new Handler(getMainLooper());
 
@@ -44,7 +38,7 @@ public class Settings extends AppCompatActivity {
 
         findViewById(R.id.save).setOnClickListener(v -> {
             String ipAddress = text.getText().toString();
-            sharedPreferences.edit().putString(AppPreferences.SHARED_PREFERENCES_IP_ADDRESS, ipAddress).apply();
+            sharedPreferences.edit().putString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ipAddress).apply();
             uiHandler.post(() -> Toast.makeText(getApplicationContext(), getString(R.string.saved), Toast.LENGTH_SHORT).show());
         });
 

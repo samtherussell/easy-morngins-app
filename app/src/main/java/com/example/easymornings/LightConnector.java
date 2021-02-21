@@ -54,10 +54,16 @@ public class LightConnector {
 
     public CompletableFuture<LightState> getLightState() {
         return CompletableFuture.supplyAsync(() -> {
+            final String response;
             try {
-                String response = get(simpleUri("/status"));
-                return parseLightState(getStringFromJson(response, "state"));
+                response = get(simpleUri("/status"));
             } catch (IOException e) {
+                e.printStackTrace();
+                return LightState.NOT_CONNECTED;
+            }
+            try {
+                return parseLightState(getStringFromJson(response, "state"));
+            } catch (Exception e) {
                 e.printStackTrace();
                 return LightState.NOT_CONNECTED;
             }

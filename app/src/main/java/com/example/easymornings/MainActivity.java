@@ -4,7 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
 import android.app.AlarmManager;
-import android.app.PendingIntent;
+import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -17,6 +17,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -24,10 +26,11 @@ import android.widget.Toast;
 
 import com.example.easymornings.LightConnector.LightState;
 
+import static com.example.easymornings.TimeUtils.getFadeTimeString;
+
 public class MainActivity extends AppCompatActivity {
 
     public static final String COMMAND_EXTRA = "command";
-    public static final String FADE_IN_EXTRA = "fadeIn";
     public static final int FADE_ON_COMMAND = 1;
     public static final int SOUND_START_COMMAND = 2;
     public static final int ALL_OFF_COMMAND = 3;
@@ -39,11 +42,22 @@ public class MainActivity extends AppCompatActivity {
     ImageView mainSwitch, onButton, offButton;
     Button plus5sec, plus1min, plus5min, dismiss, sleep;
     MediaPlayer mediaPlayer;
+    AlarmController alarmController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setTurnScreenOn(true);
+        setShowWhenLocked(true);
+        KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        keyguardManager.requestDismissKeyguard(this, null);
+        setShowWhenLocked(true);
         setContentView(R.layout.activity_main);
+
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        SharedPreferences sharedPreferences = getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
+        PreferencesConnector preferencesConnector = new SharedPreferencesConnector(sharedPreferences);
+        alarmController = new AlarmController(alarmManager, preferencesConnector, getApplicationContext());
 
         findViewById(R.id.settings).setOnClickListener((v) -> startActivity(new Intent(this, Settings.class)));
         findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarm.class)));
@@ -77,7 +91,8 @@ public class MainActivity extends AppCompatActivity {
 
         uiHandler = new Handler(Looper.myLooper());
 
-        LightConnector lightConnector = new LightConnector(this::getIPAddress);
+        LightConnector lightConnector = new LightConnector(() ->
+                preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
         lightManager = new LightManager(lightConnector);
 
@@ -90,19 +105,10 @@ public class MainActivity extends AppCompatActivity {
 
             int command = extras.getInt(COMMAND_EXTRA);
             switch (command) {
-                case FADE_ON_COMMAND:
-                    int time = extras.getInt(FADE_IN_EXTRA);
-                    fadeOnNow(time);
-                    SetAlarm.resetFadeInAlarm(this);
-                    break;
                 case SOUND_START_COMMAND:
-                    SetAlarm.resetSoundAlarm(this);
+                    alarmController.scheduleNextAlarm();
                 case SLEEP_SOUND_COMMAND:
                     soundAlarm();
-                    break;
-                case ALL_OFF_COMMAND:
-                    offNow();
-                    SetAlarm.resetOffAlarm(this);
                     break;
             }
         }
@@ -117,8 +123,7 @@ public class MainActivity extends AppCompatActivity {
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build();
 
-            SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
-            String uriString = sharedPreferences.getString(AppPreferences.SHARED_PREFERENCES_SOUND, null);
+            String uriString = alarmController.getAlarmSound();
             if (uriString != null) {
                 mediaPlayer = MediaPlayer.create(this, Uri.parse(uriString), null, audioAttributes, audioManager.generateAudioSessionId());
             }
@@ -140,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
             mediaPlayer.stop();
         dismiss.setVisibility(View.GONE);
         sleep.setVisibility(View.GONE);
-        cancelSleepAlarm();
+        alarmController.cancelSleepAlarm();
     }
 
     void notifyActionFailed() {
@@ -164,11 +169,6 @@ public class MainActivity extends AppCompatActivity {
         uiHandler.postDelayed(this::checkLightState, 1000);
     }
 
-    String getIPAddress() {
-        SharedPreferences sharedPreferences = AppPreferences.getSharePreferences(this);
-        return sharedPreferences.getString(AppPreferences.SHARED_PREFERENCES_IP_ADDRESS, "");
-    }
-
     private void onSwitchClick() {
         if (lightManager.lightState == LightState.OFF) {
             if (lightManager.fadeTime == 0)
@@ -186,23 +186,7 @@ public class MainActivity extends AppCompatActivity {
     private void onSleepClick() {
         mediaPlayer.stop();
         sleep.setVisibility(View.GONE);
-        scheduleSleepAlarm(60);
-    }
-
-    private void scheduleSleepAlarm(int seconds) {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SLEEP_SOUND_COMMAND);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, MainActivity.SLEEP_SOUND_COMMAND, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + seconds*1000, pendingIntent);
-    }
-
-    private void cancelSleepAlarm() {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SLEEP_SOUND_COMMAND);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, MainActivity.SLEEP_SOUND_COMMAND, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        alarmManager.cancel(pendingIntent);
+        alarmController.scheduleSleepAlarm(60);
     }
 
     private void addFadeTime(int amount) {
@@ -291,14 +275,14 @@ public class MainActivity extends AppCompatActivity {
                 if (fadeTime == 0)
                     message = getString(R.string.instant_on);
                 else {
-                    message = String.format("%s %s", getTimeString(fadeTime), getString(R.string.fade_on));
+                    message = String.format("%s %s", getFadeTimeString(fadeTime), getString(R.string.fade_on));
                 }
                 break;
             case ON:
                 if (fadeTime == 0)
                     message = getString(R.string.instant_off);
                 else {
-                    message = String.format("%s %s", getTimeString(fadeTime), getString(R.string.fade_off));
+                    message = String.format("%s %s", getFadeTimeString(fadeTime), getString(R.string.fade_off));
                 }
                 break;
             case FADING_OFF:
@@ -314,16 +298,5 @@ public class MainActivity extends AppCompatActivity {
                 message = "bad light state";
         }
         switchHint.setText(message);
-    }
-
-    String getTimeString(int seconds) {
-        int minutes = seconds / 60;
-        seconds = seconds % 60;
-        if (minutes > 0 && seconds > 0)
-            return String.format("%d:%02d", minutes, seconds);
-        else if (minutes > 0)
-            return String.format("%d %s", minutes, getString(R.string.minute));
-        else
-            return String.format("%d %s", seconds, getString(R.string.second));
     }
 }
