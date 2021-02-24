@@ -17,8 +17,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.TypedValue;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -60,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         alarmController = new AlarmController(alarmManager, preferencesConnector, getApplicationContext());
 
         findViewById(R.id.settings).setOnClickListener((v) -> startActivity(new Intent(this, Settings.class)));
-        findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarm.class)));
+        findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarmActivity.class)));
 
         switchHint = findViewById(R.id.switchhint);
 

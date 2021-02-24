@@ -19,6 +19,10 @@ class TimeUtils {
         return (long) (hour * 60 + minute) * 60;
     }
 
+    static int getSecondsUntil(long epocMilli) {
+        return (int) ((epocMilli - System.currentTimeMillis()) / 1000);
+    }
+
     static String getAbsoluteTimeString(int hour, int minute) {
         return String.format("%02d:%02d", hour, minute);
     }

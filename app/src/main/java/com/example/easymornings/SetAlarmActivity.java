@@ -24,9 +24,10 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class SetAlarm extends AppCompatActivity {
+public class SetAlarmActivity extends AppCompatActivity {
 
     private static final int SOUND_CHOOSER_REQUEST_CODE = 50;
     private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 51;
@@ -54,8 +55,8 @@ public class SetAlarm extends AppCompatActivity {
         alarmController = createAlarmController();
         alarm = setupAlarmTimeView();
 
-        onDelay = setupDelayTimeView(R.id.onDelay, "Fade on time", alarmController::getFadeOnDelay, alarmController::setFadeOnDelay);
-        offDelay = setupDelayTimeView(R.id.offDelay, "Off timer", alarmController::getOffDelay, alarmController::setOffDelay);
+        onDelay = setupDelayTimeView(R.id.onDelay, "Fade on", alarmController::getFadeOnDelay, alarmController::setFadeOnDelay);
+        offDelay = setupDelayTimeView(R.id.offDelay, "Turn off", alarmController::getOffDelay, alarmController::setOffDelay);
 
         enabled = setupCompoundButton(R.id.enabled, AppPreferenceValues.SHARED_PREFERENCES_ENABLED);
         monday = setupCompoundButton(R.id.monday, AppPreferenceValues.SHARED_PREFERENCES_MONDAY);
@@ -84,7 +85,7 @@ public class SetAlarm extends AppCompatActivity {
         return view;
     }
 
-    private TextView setupDelayTimeView(int id, String title, Supplier<Integer> getter, Consumer<Integer> setter) {
+    private TextView setupDelayTimeView(int id, String title, Supplier<Integer> getter, Function<Integer, Integer> setter) {
         TextView view = findViewById(id);
         int delay = getter.get();
         view.setText(TimeUtils.getDelayString(TimeUtils.getMinute(delay), TimeUtils.getSecond(delay)));
@@ -124,7 +125,7 @@ public class SetAlarm extends AppCompatActivity {
 
     private void openAlarmPickerDialog(TextView view) {
         AlarmController.AlarmTime alarmTime = alarmController.getAlarmTime();
-        new TimePickerDialog(SetAlarm.this, (d, hour, min) -> {
+        new TimePickerDialog(SetAlarmActivity.this, (d, hour, min) -> {
             view.setText(TimeUtils.getAbsoluteTimeString(hour, min));
             int delay = alarmController.setAlarmTime(hour, min);
             if (delay > 0) {
@@ -134,8 +135,8 @@ public class SetAlarm extends AppCompatActivity {
         }, alarmTime.getHour(), alarmTime.getMinute(), true).show();
     }
 
-    private void openDelayPickerDialog(TextView view, String title, Supplier<Integer> getter, Consumer<Integer> setter) {
-        final Dialog dialog = new Dialog(SetAlarm.this);
+    private void openDelayPickerDialog(TextView view, String title, Supplier<Integer> getter, Function<Integer, Integer> setter) {
+        final Dialog dialog = new Dialog(SetAlarmActivity.this);
         dialog.setTitle(title);
         dialog.setContentView(R.layout.delay_picker_dialog);
         Button cancel = dialog.findViewById(R.id.dialog_cancel);
@@ -151,7 +152,11 @@ public class SetAlarm extends AppCompatActivity {
         seconds.setValue(TimeUtils.getSecond(delay));
         cancel.setOnClickListener(v -> dialog.dismiss());
         save.setOnClickListener(v -> {
-            setter.accept(minutes.getValue() * 60 + seconds.getValue());
+            int timeUtil = setter.apply(minutes.getValue() * 60 + seconds.getValue());
+            if (timeUtil > 0) {
+                String msg = String.format("%s in %s", title, TimeUtils.getTimeIntervalString(timeUtil));
+                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+            }
             view.setText(TimeUtils.getDelayString(minutes.getValue(), seconds.getValue()));
             dialog.dismiss();
         });

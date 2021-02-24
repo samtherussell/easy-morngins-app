@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
+import java.sql.Time;
 import java.util.Calendar;
 
 import lombok.RequiredArgsConstructor;
@@ -50,9 +51,9 @@ public class AlarmController {
         return preferences.getBoolean(preferenceKey, true);
     }
 
-    void setFadeOnDelay(int seconds) {
+    int setFadeOnDelay(int seconds) {
         preferences.setInt(AppPreferenceValues.SHARED_PREFERENCES_FADE_IN_TIME, seconds);
-        scheduleNextFadeIn();
+        return scheduleNextFadeIn();
     }
 
     int setAlarmTime(int hour, int minute) {
@@ -62,9 +63,9 @@ public class AlarmController {
         return scheduleNextAlarm();
     }
 
-    void setOffDelay(int seconds) {
+    int setOffDelay(int seconds) {
         preferences.setInt(AppPreferenceValues.SHARED_PREFERENCES_OFF_DELAY, seconds);
-        scheduleNextOff();
+        return scheduleNextOff();
     }
 
     int setEnabled(String preferenceKey, boolean value) {
@@ -74,7 +75,7 @@ public class AlarmController {
         return scheduleNextAlarm();
     }
 
-    public void scheduleNextFadeIn() {
+    public int scheduleNextFadeIn() {
         int fadeDelay = getFadeOnDelay();
         long alarmTime = getAlarmTimestamp();
         int onTime = (int) (alarmTime - fadeDelay);
@@ -84,9 +85,11 @@ public class AlarmController {
         if (fadeDelay == 0 || preferences.getBoolean(AppPreferenceValues.SHARED_PREFERENCES_ENABLED, true)) {
             long nextAlarmMillis = getNextAlarmMillis(onTime);
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
-            System.out.println(String.format("Fade in scheduled for %d", nextAlarmMillis));
-        } else
+            return TimeUtils.getSecondsUntil(nextAlarmMillis);
+        } else {
             alarmManager.cancel(pendingIntent);
+            return -1;
+        }
     }
 
     public int scheduleNextAlarm() {
@@ -97,27 +100,27 @@ public class AlarmController {
         if (preferences.getBoolean(AppPreferenceValues.SHARED_PREFERENCES_ENABLED, true)) {
             long nextAlarmMillis = getNextAlarmMillis(time);
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
-            System.out.println(String.format("Alarm scheduled for %d", nextAlarmMillis));
-            return (int) (nextAlarmMillis - System.currentTimeMillis()) / 1000;
+            return TimeUtils.getSecondsUntil(nextAlarmMillis);
         } else {
             alarmManager.cancel(pendingIntent);
             return -1;
         }
     }
 
-    public void scheduleNextOff() {
+    public int scheduleNextOff() {
         long delay = getOffDelay();
         long alarmTime = getAlarmTimestamp();
         int offTime = (int) (alarmTime + delay);
-        System.out.println(String.format("off delay %d + %d = %d", delay, alarmTime, offTime));
         Intent intent = new Intent(context, TurnOffReceiver.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         if (delay == 0 || preferences.getBoolean(AppPreferenceValues.SHARED_PREFERENCES_ENABLED, true)) {
             long nextAlarmMillis = getNextAlarmMillis(offTime);
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
-            System.out.println(String.format("off scheduled for %d", nextAlarmMillis));
-        } else
+            return TimeUtils.getSecondsUntil(nextAlarmMillis);
+        } else {
             alarmManager.cancel(pendingIntent);
+            return -1;
+        }
     }
 
     public long getNextAlarmMillis(long timestamp) {

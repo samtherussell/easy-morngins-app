@@ -3,6 +3,8 @@ package com.example.easymornings;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.Calendar;
+
 public class AppPreferenceValues {
 
     public static final String SHARED_PREFERENCES_FILE = "EASY_MORNINGS_SHARED_PREFERENCES";
@@ -25,22 +27,22 @@ public class AppPreferenceValues {
 
     static String getDayOfWeekPreferenceName(int dayOfWeek) {
         switch (dayOfWeek) {
-            case 0:
+            case Calendar.MONDAY:
                 return SHARED_PREFERENCES_MONDAY;
-            case 1:
+            case Calendar.TUESDAY:
                 return SHARED_PREFERENCES_TUESDAY;
-            case 2:
+            case Calendar.WEDNESDAY:
                 return SHARED_PREFERENCES_WEDNESDAY;
-            case 3:
+            case Calendar.THURSDAY:
                 return SHARED_PREFERENCES_THURSDAY;
-            case 4:
+            case Calendar.FRIDAY:
                 return SHARED_PREFERENCES_FRIDAY;
-            case 5:
+            case Calendar.SATURDAY:
                 return SHARED_PREFERENCES_SATURDAY;
-            case 6:
+            case Calendar.SUNDAY:
                 return SHARED_PREFERENCES_SUNDAY;
             default:
-                throw new RuntimeException();
+                throw new IndexOutOfBoundsException(String.format("%d is not possible day of week", dayOfWeek));
         }
     }
 
