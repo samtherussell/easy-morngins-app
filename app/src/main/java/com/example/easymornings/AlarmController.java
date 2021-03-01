@@ -4,9 +4,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 
-import java.sql.Time;
 import java.util.Calendar;
 
 import lombok.RequiredArgsConstructor;
@@ -143,11 +141,13 @@ public class AlarmController {
         return now.getTimeInMillis();
     }
 
-    void scheduleSleepAlarm(int seconds) {
+    int scheduleSleepAlarm(int seconds) {
         Intent intent = new Intent(context, MainActivity.class);
         intent.putExtra(MainActivity.COMMAND_EXTRA, MainActivity.SLEEP_SOUND_COMMAND);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, MainActivity.SLEEP_SOUND_COMMAND, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + seconds*1000, pendingIntent);
+        long triggerAtMillis = System.currentTimeMillis() + seconds * 1000;
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+        return TimeUtils.getSecondsUntil(triggerAtMillis);
     }
 
     void cancelSleepAlarm() {

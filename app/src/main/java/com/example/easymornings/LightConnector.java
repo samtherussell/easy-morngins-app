@@ -165,18 +165,16 @@ public class LightConnector {
         }
     }
 
-    String getStringFromJson(String response, String name) {
-        JsonReader jsonReader = new JsonReader(new StringReader(response));
-        try {
-            jsonReader.beginObject();
-            while (jsonReader.hasNext())
-                if (jsonReader.nextName().equals(name))
-                    return jsonReader.nextString();
-            return null;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+    String getStringFromJson(String response, String name) throws IOException {
+        if (name.length() == 0) {
+            throw new IOException("Empty input");
         }
+        JsonReader jsonReader = new JsonReader(new StringReader(response));
+        jsonReader.beginObject();
+        while (jsonReader.hasNext())
+            if (jsonReader.nextName().equals(name))
+                return jsonReader.nextString();
+       throw new IOException("Reached end of json");
     }
 
 }

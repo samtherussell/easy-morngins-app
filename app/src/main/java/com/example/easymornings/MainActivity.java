@@ -29,10 +29,9 @@ import static com.example.easymornings.TimeUtils.getFadeTimeString;
 public class MainActivity extends AppCompatActivity {
 
     public static final String COMMAND_EXTRA = "command";
-    public static final int FADE_ON_COMMAND = 1;
     public static final int SOUND_START_COMMAND = 2;
-    public static final int ALL_OFF_COMMAND = 3;
     public static final int SLEEP_SOUND_COMMAND = 4;
+    public static final int ALARM_SLEEP_DELAY = 5 * 60;
 
     Handler uiHandler;
     LightManager lightManager;
@@ -184,7 +183,9 @@ public class MainActivity extends AppCompatActivity {
     private void onSleepClick() {
         mediaPlayer.stop();
         sleep.setVisibility(View.GONE);
-        alarmController.scheduleSleepAlarm(60);
+        int delay = alarmController.scheduleSleepAlarm(ALARM_SLEEP_DELAY);
+        String msg = String.format("Alarm will sound in %s", TimeUtils.getTimeIntervalString(delay));
+        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
     }
 
     private void addFadeTime(int amount) {

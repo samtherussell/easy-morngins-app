@@ -20,7 +20,7 @@ class TimeUtils {
     }
 
     static int getSecondsUntil(long epocMilli) {
-        return (int) ((epocMilli - System.currentTimeMillis()) / 1000);
+        return (int) ((epocMilli + 500 - System.currentTimeMillis()) / 1000);
     }
 
     static String getAbsoluteTimeString(int hour, int minute) {
