@@ -48,6 +48,14 @@ public class LightManager {
         });
     }
 
+    CompletableFuture<Boolean> onNow(float level) {
+        return lightConnector.onNow(level).thenApply((success) -> {
+            if (success)
+                changeState(LightState.ON);
+            return success;
+        });
+    }
+
     CompletableFuture<Boolean> onTimer(int period) {
         return lightConnector.onTimer(period).thenApply((success) -> {
             if (success)

@@ -19,6 +19,7 @@ import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,7 +37,8 @@ public class MainActivity extends AppCompatActivity {
     Handler uiHandler;
     LightManager lightManager;
     TextView switchHint;
-    ImageView mainSwitch, onButton, offButton;
+    SeekBar dimmerBar;
+    ImageView onButton, offButton;
     Button plus5sec, plus1min, plus5min, dismiss, sleep;
     MediaPlayer mediaPlayer;
     AlarmController alarmController;
@@ -61,8 +63,26 @@ public class MainActivity extends AppCompatActivity {
 
         switchHint = findViewById(R.id.switchhint);
 
-        mainSwitch = findViewById(R.id.sliderbutton);
-        mainSwitch.setOnClickListener(v -> onSwitchClick());
+        dimmerBar = findViewById(R.id.seekBar);
+        dimmerBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    float level = ((float) progress) / seekBar.getMax();
+                    lightManager.onNow(level);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
 
         onButton = findViewById(R.id.onbutton);
         onButton.setOnClickListener(v -> onNow());
@@ -163,21 +183,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void checkLightState() {
         lightManager.checkLightState().thenAccept(r -> { if (r) uiHandler.post(this::updateUI); });
-        uiHandler.postDelayed(this::checkLightState, 1000);
-    }
-
-    private void onSwitchClick() {
-        if (lightManager.lightState == LightState.OFF) {
-            if (lightManager.fadeTime == 0)
-                onNow();
-            else
-                fadeOnNow(lightManager.fadeTime);
-        } else if (lightManager.lightState == LightConnector.LightState.ON) {
-            if (lightManager.fadeTime == 0)
-                offNow();
-            else
-                fadeOffNow(lightManager.fadeTime);
-        }
+        uiHandler.postDelayed(this::checkLightState, 2000);
     }
 
     private void onSleepClick() {
@@ -194,19 +200,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onNow() {
-        lightManager.onNow().thenAccept(this::updateOrNotify);
+        if (lightManager.fadeTime == 0)
+            lightManager.onNow().thenAccept(this::updateOrNotify);
+        else
+            lightManager.fadeOnNow(lightManager.fadeTime).thenAccept(this::updateOrNotify);
     }
 
     private void offNow() {
-        lightManager.offNow().thenAccept(this::updateOrNotify);
-    }
-
-    private void fadeOnNow(int fadeTime) {
-        lightManager.fadeOnNow(fadeTime).thenAccept(this::updateOrNotify);
-    }
-
-    private void fadeOffNow(int fadeTime) {
-        lightManager.fadeOffNow(fadeTime).thenAccept(this::updateOrNotify);
+        if (lightManager.fadeTime == 0)
+            lightManager.offNow().thenAccept(this::updateOrNotify);
+        else
+            lightManager.fadeOffNow(lightManager.fadeTime).thenAccept(this::updateOrNotify);
     }
 
     void updateOrNotify(boolean success) {
@@ -234,37 +238,15 @@ public class MainActivity extends AppCompatActivity {
     private void updateSlider(LightState lightState) {
         switch (lightState) {
             case OFF:
-                updateMainButtonPosition(0);
-                mainSwitch.setImageResource(R.drawable.ic_switchbuttonoff);
-                offButton.setVisibility(View.GONE);
-                onButton.setVisibility(View.GONE);
+                dimmerBar.setProgress(0, false);
                 break;
             case ON:
-                updateMainButtonPosition(125);
-                mainSwitch.setImageResource(R.drawable.ic_switchbuttonon);
-                offButton.setVisibility(View.GONE);
-                onButton.setVisibility(View.GONE);
+                dimmerBar.setProgress(dimmerBar.getMax(), false);
                 break;
             case FADING_ON:
             case FADING_OFF:
-                updateMainButtonPosition(62);
-                mainSwitch.setImageResource(R.drawable.ic_switchbuttonoff);
-                offButton.setVisibility(View.VISIBLE);
-                onButton.setVisibility(View.VISIBLE);
+                dimmerBar.setProgress(dimmerBar.getMax() / 2, false);
         }
-    }
-
-    private void updateMainButtonPosition(int sp) {
-        ConstraintLayout.LayoutParams mainSwitch = ((ConstraintLayout.LayoutParams) this.mainSwitch.getLayoutParams());
-        int px = spToPx(sp);
-        if (mainSwitch.getMarginStart() != px) {
-            mainSwitch.setMarginStart(px);
-            this.mainSwitch.setLayoutParams(mainSwitch);
-        }
-    }
-
-    public int spToPx(float sp) {
-        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, getResources().getDisplayMetrics());
     }
 
     void updateSwitchHint(LightState lightState, Integer fadeTime) {

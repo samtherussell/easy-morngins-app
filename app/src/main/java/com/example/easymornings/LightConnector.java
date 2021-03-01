@@ -27,6 +27,7 @@ public class LightConnector {
     final Executor executor;
     final Supplier<String> getIP;
     final static int PORT = 8080;
+    long lastOnLevelRequest = System.currentTimeMillis();
 
     LightConnector(Supplier<String> getIP) {
         executor = Executors.newSingleThreadExecutor();
@@ -72,6 +73,16 @@ public class LightConnector {
 
     CompletableFuture<Boolean> onNow() {
         return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("/on")), executor);
+    }
+
+    CompletableFuture<Boolean> onNow(float level) {
+        long now = System.currentTimeMillis();
+        if (now - lastOnLevelRequest > 50) {
+            lastOnLevelRequest = now;
+            return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithLevel("/on", level)), executor);
+        } else {
+            return CompletableFuture.completedFuture(true);
+        }
     }
 
     CompletableFuture<Boolean> onTimer(int period) {
@@ -129,6 +140,21 @@ public class LightConnector {
                     .setPort(PORT)
                     .setPath(path)
                     .addParameter("seconds", String.valueOf(seconds))
+                    .build();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    URI uriWithLevel(String path, float level) {
+        try {
+            return new URIBuilder()
+                    .setScheme("http")
+                    .setHost(getIP.get())
+                    .setPort(PORT)
+                    .setPath(path)
+                    .addParameter("level", String.valueOf(level))
                     .build();
         } catch (URISyntaxException e) {
             e.printStackTrace();
