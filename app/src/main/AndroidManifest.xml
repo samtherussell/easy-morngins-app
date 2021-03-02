@@ -22,7 +22,7 @@
             android:enabled="true"
             android:exported="true" />
 
-        <activity android:name=".Settings" />
+        <activity android:name=".SettingsActivity" />
         <activity android:name=".SetAlarmActivity" />
         <activity android:name=".MainActivity">
             <intent-filter>

@@ -1,7 +1,6 @@
 package com.example.easymornings;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 
 import android.app.AlarmManager;
 import android.app.KeyguardManager;
@@ -15,7 +14,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -58,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
         PreferencesConnector preferencesConnector = new SharedPreferencesConnector(sharedPreferences);
         alarmController = new AlarmController(alarmManager, preferencesConnector, getApplicationContext());
 
-        findViewById(R.id.settings).setOnClickListener((v) -> startActivity(new Intent(this, Settings.class)));
+        findViewById(R.id.settings).setOnClickListener((v) -> startActivity(new Intent(this, SettingsActivity.class)));
         findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarmActivity.class)));
 
         switchHint = findViewById(R.id.switchhint);

@@ -10,7 +10,7 @@ import android.os.Handler;
 import android.widget.EditText;
 import android.widget.Toast;
 
-public class Settings extends AppCompatActivity {
+public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
