@@ -26,8 +26,6 @@ public class FadeOnReceiver extends BroadcastReceiver {
 
         LightConnector lightConnector = new LightConnector(() -> preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
-        Handler uiHandler = new Handler(Looper.myLooper());
-
         lightConnector.fade(1, fadeTime).thenAccept((success) -> {
             if (!success)
                 NotificationUtils.displayProblemNotification(context, "Could not fade on", NotificationUtils.FADE_ON_RECEIVER_PROBLEM);

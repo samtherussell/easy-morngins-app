@@ -20,8 +20,6 @@ public class TurnOffReceiver extends BroadcastReceiver {
 
         LightConnector lightConnector = new LightConnector(() -> preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
-        Handler uiHandler = new Handler(Looper.myLooper());
-
         lightConnector.setNow(0).thenAccept((success) -> {
             if (!success)
                 NotificationUtils.displayProblemNotification(context, "Could not turn off", NotificationUtils.FADE_ON_RECEIVER_PROBLEM);
