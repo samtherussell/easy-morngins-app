@@ -1,7 +1,5 @@
 package com.example.easymornings;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.app.AlarmManager;
 import android.app.KeyguardManager;
 import android.content.Context;
@@ -21,9 +19,9 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.easymornings.LightConnector.LightState;
+import androidx.appcompat.app.AppCompatActivity;
 
-import java.util.function.Predicate;
+import com.example.easymornings.LightConnector.LightState;
 
 import static com.example.easymornings.TimeUtils.getFadeTimeString;
 
@@ -69,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
                     float level = ((float) progress) / seekBar.getMax();
-                    lightManager.on(level);
+                    lightManager.setLevel(level);
                 }
             }
 
@@ -204,53 +202,34 @@ public class MainActivity extends AppCompatActivity {
 
     synchronized private void updateTimeButtons(LightManager.State state) {
         LightState lightState = state.getLightState();
-        boolean enabled = lightState == LightState.OFF || lightState == LightState.ON;
+        boolean enabled = lightState != LightState.NOT_CONNECTED;
         plus5sec.setEnabled(enabled);
         plus1min.setEnabled(enabled);
         plus5min.setEnabled(enabled);
     }
 
     synchronized private void updateSlider(LightManager.State state) {
-        switch (state.getLightState()) {
-            case OFF:
-                dimmerBar.setProgress(0, false);
-                break;
-            case ON:
-            case FADING_ON:
-            case FADING_OFF:
-                dimmerBar.setProgress((int) (dimmerBar.getMax() * state.getLevel()), false);
-        }
+        dimmerBar.setProgress((int) (dimmerBar.getMax() * state.getLevel()), false);
     }
 
     synchronized void updateSwitchHint(LightManager.State state) {
         final String message;
         int fadeTime = state.getFadeTime();
         switch (state.getLightState()) {
-            case OFF:
+            case CONSTANT:
                 if (fadeTime == 0)
-                    message = getString(R.string.instant_on);
-                else {
-                    message = String.format("%s %s", getFadeTimeString(fadeTime), getString(R.string.fade_on));
-                }
+                    message = getString(R.string.instantly);
+                else
+                    message = String.format("%s %s", getFadeTimeString(fadeTime), getString(R.string.fade));
                 break;
-            case ON:
-                if (fadeTime == 0)
-                    message = getString(R.string.instant_off);
-                else {
-                    message = String.format("%s %s", getFadeTimeString(fadeTime), getString(R.string.fade_off));
-                }
+            case FADING:
+                message = getString(R.string.fading);
                 break;
-            case FADING_OFF:
-                message = getString(R.string.fading_off);
-                break;
-            case FADING_ON:
-                message = getString(R.string.fading_on);
-                break;
-            case NOT_CONNECTED:
+           case NOT_CONNECTED:
                 message = getString(R.string.notconnected);
                 break;
             default:
-                message = "bad light state";
+                throw new RuntimeException();
         }
         switchHint.setText(message);
     }

@@ -1,13 +1,8 @@
 <resources>
     <string name="app_name">Easy Mornings</string>
-    <string name="instant_on">on instantly</string>
-    <string name="instant_off">off instantly</string>
-    <string name="fade_on">fade on</string>
-    <string name="fade_off">fade off</string>
-    <string name="fading_on">fading on</string>
-    <string name="fading_off">fading off</string>
-    <string name="add_time_on">add time to fade on slowly</string>
-    <string name="add_time_off">add time to fade off slowly</string>
+    <string name="instantly">instantly</string>
+    <string name="fade">fade</string>
+    <string name="fading">fading</string>
     <string name="minute">min</string>
     <string name="second">sec</string>
     <string name="plus5sec">+5 sec</string>
@@ -15,20 +10,7 @@
     <string name="plus5min">+5 min</string>
     <string name="notconnected">not connected</string>
     <string name="title_activity_alarm_config">AlarmConfig</string>
-    <!--
-    This string is used for square devices and overridden by hello_world in
-    values-round/strings.xml for round devices.
-    -->
-    <string name="hello_world">Hello Square World!</string>
     <string name="title_activity_settings">Settings</string>
-    <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">First Fragment</string>
-    <string name="second_fragment_label">Second Fragment</string>
-    <string name="next">Next</string>
-    <string name="previous">Previous</string>
-
-    <string name="hello_first_fragment">Hello first fragment</string>
-    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
     <string name="ipaddresstitle">IP Address</string>
     <string name="test_connection">Test Connection</string>
     <string name="save">Save</string>

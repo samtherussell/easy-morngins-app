@@ -56,21 +56,25 @@ public class LightManager {
     }
 
     CompletableFuture<Boolean> on() {
-        return on(1);
+        return setLevel(1);
     }
 
-    CompletableFuture<Boolean> on(float level) {
+    CompletableFuture<Boolean> off() {
+        return setLevel(0);
+    }
+
+    CompletableFuture<Boolean> setLevel(float level) {
         if (fadeTime == 0)
-            return onNow(level);
+            return setNow(level);
         else
-            return fadeOnNow(fadeTime);
+            return fade(level, fadeTime);
     }
 
-    CompletableFuture<Boolean> onNow(float level) {
-        return lightConnector.onNow(level).thenApply((success) -> {
+    CompletableFuture<Boolean> setNow(float level) {
+        return lightConnector.setNow(level).thenApply((success) -> {
             if (success) {
                 this.fadeTime = 0;
-                this.lightState = LightState.ON;
+                this.lightState = LightState.CONSTANT;
                 this.level = level;
                 State state = getState();
                 fadeTimeSubscribers.forEach(sub -> sub.accept(state));
@@ -82,52 +86,14 @@ public class LightManager {
         });
     }
 
-    CompletableFuture<Boolean> fadeOnNow(int period) {
-        return lightConnector.fadeOnNow(period).thenApply((success) -> {
+    CompletableFuture<Boolean> fade(float level, int period) {
+        return lightConnector.fade(level, period).thenApply((success) -> {
             if (success) {
                 this.fadeTime = 0;
-                this.lightState = LightState.FADING_ON;
+                this.lightState = LightState.FADING;
                 State state = getState();
                 fadeTimeSubscribers.forEach(sub -> sub.accept(state));
                 lightStateSubscribers.forEach(sub -> sub.accept(state));
-            } else
-                actionFailedSubscribers.forEach(Runnable::run);
-            return success;
-        });
-    }
-
-    CompletableFuture<Boolean> off() {
-        if (fadeTime == 0)
-            return offNow();
-        else
-            return fadeOffNow(fadeTime);
-    }
-
-    CompletableFuture<Boolean> offNow() {
-        return lightConnector.offNow().thenApply((success) -> {
-            if (success) {
-                this.fadeTime = 0;
-                this.lightState = LightState.OFF;
-                this.level = 0;
-                State state = getState();
-                fadeTimeSubscribers.forEach(sub -> sub.accept(state));
-                lightStateSubscribers.forEach(sub -> sub.accept(state));
-                lightLevelSubscribers.forEach(sub -> sub.accept(state));
-            } else
-                actionFailedSubscribers.forEach(Runnable::run);
-            return success;
-        });
-    }
-
-    CompletableFuture<Boolean> fadeOffNow(int period) {
-        return lightConnector.fadeOffNow(period).thenApply((success) -> {
-            if (success) {
-                this.fadeTime = 0;
-                this.lightState = LightState.ON;
-                State state = getState();
-                fadeTimeSubscribers.forEach(sub -> sub.accept(state));
-                lightStateSubscribers.forEach(sub -> sub.accept(state));
-                lightLevelSubscribers.forEach(sub -> sub.accept(state));
             } else
                 actionFailedSubscribers.forEach(Runnable::run);
             return success;

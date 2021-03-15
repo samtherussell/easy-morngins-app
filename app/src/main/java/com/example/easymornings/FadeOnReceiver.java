@@ -22,11 +22,9 @@ public class FadeOnReceiver extends BroadcastReceiver {
 
         LightConnector lightConnector = new LightConnector(() -> preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
-        LightManager lightManager = new LightManager(lightConnector);
-
         Handler uiHandler = new Handler(Looper.myLooper());
 
-        lightManager.fadeOnNow(fadeTime).thenAccept((success) -> {
+        lightConnector.fade(1, fadeTime).thenAccept((success) -> {
             if (!success)
                 uiHandler.post(() -> Toast.makeText(context, "Could not fade on", Toast.LENGTH_LONG).show());
         });

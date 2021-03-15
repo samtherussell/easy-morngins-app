@@ -21,6 +21,7 @@ import cz.msebera.android.httpclient.client.utils.URIBuilder;
 import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
 import cz.msebera.android.httpclient.impl.client.HttpClients;
 import lombok.Builder;
+import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 
@@ -29,27 +30,21 @@ public class LightConnector {
     final Executor executor;
     final Supplier<String> getIP;
     final static int PORT = 8080;
-    long lastOnLevelRequest = System.currentTimeMillis();
+    RateLimiter<CompletableFuture<Boolean>> rateLimiter = new RateLimiter<>(50, CompletableFuture.completedFuture(true));
 
     LightConnector(Supplier<String> getIP) {
         executor = Executors.newSingleThreadExecutor();
         this.getIP = getIP;
     }
 
-    enum LightState {UNDEFINED, OFF, FADING_ON, ON, FADING_OFF, TIMED_ON, NOT_CONNECTED}
+    enum LightState {UNDEFINED, CONSTANT, FADING, NOT_CONNECTED}
 
     private LightState parseLightState(String lightState) {
         switch (lightState) {
-            case "LIGHT_STATE_ON_INDEFINITELY":
-                return LightState.ON;
-            case "LIGHT_STATE_OFF_INDEFINITELY":
-                return LightState.OFF;
-            case "LIGHT_STATE_FADING_ON":
-                return LightState.FADING_ON;
-            case "LIGHT_STATE_FADING_OFF":
-                return LightState.FADING_OFF;
-            case "LIGHT_STATE_ON_TIMED":
-                return LightState.TIMED_ON;
+            case "LIGHT_STATE_CONSTANT":
+                return LightState.CONSTANT;
+            case "LIGHT_STATE_FADING":
+                return LightState.FADING;
             default:
                 throw new RuntimeException();
         }
@@ -67,15 +62,8 @@ public class LightConnector {
 
     public CompletableFuture<LightStatus> getLightStatus() {
         return CompletableFuture.supplyAsync(() -> {
-            final String response;
             try {
-                response = get(simpleUri("/status"));
-            } catch (IOException e) {
-                e.printStackTrace();
-                return LightStatus.NotConnected();
-            }
-
-            try {
+                String response = get(statusURI());
                 JSONObject json = new JSONObject(response);
                 LightState state = parseLightState(json.getString("state"));
                 double level = json.getDouble("level");
@@ -87,34 +75,16 @@ public class LightConnector {
         }, executor);
     }
 
-    CompletableFuture<Boolean> onNow() {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("/on")), executor);
+    CompletableFuture<Boolean> setNow(float level) {
+        return rateLimiter.limit(() ->
+                CompletableFuture.supplyAsync(() -> postAndCheck(setNowURI(level)), executor)
+        );
     }
 
-    CompletableFuture<Boolean> onNow(float level) {
-        long now = System.currentTimeMillis();
-        if (now - lastOnLevelRequest > 50) {
-            lastOnLevelRequest = now;
-            return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithLevel("/on", level)), executor);
-        } else {
-            return CompletableFuture.completedFuture(true);
-        }
-    }
-
-    CompletableFuture<Boolean> onTimer(int period) {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("/on-timer", period)), executor);
-    }
-
-    CompletableFuture<Boolean> fadeOnNow(int period) {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("/fade-on", period)), executor);
-    }
-
-    CompletableFuture<Boolean> offNow() {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(simpleUri("/off")), executor);
-    }
-
-    CompletableFuture<Boolean> fadeOffNow(int period) {
-        return CompletableFuture.supplyAsync(() -> postAndCheck(uriWithSeconds("/fade-off", period)), executor);
+    CompletableFuture<Boolean> fade(float level, int period) {
+        return rateLimiter.limit(() ->
+                CompletableFuture.supplyAsync(() -> postAndCheck(fadeURI(level, period)), executor)
+        );
     }
 
     boolean postAndCheck(URI path) {
@@ -134,13 +104,13 @@ public class LightConnector {
         return execute(new HttpGet(uri));
     }
 
-    URI simpleUri(String path) {
+    URI statusURI() {
         try {
             return new URIBuilder()
                     .setScheme("http")
                     .setHost(getIP.get())
                     .setPort(PORT)
-                    .setPath(path)
+                    .setPath("/status")
                     .build();
         } catch (URISyntaxException e) {
             e.printStackTrace();
@@ -148,29 +118,30 @@ public class LightConnector {
         }
     }
 
-    URI uriWithSeconds(String path, int seconds) {
+    URI setNowURI(float level) {
         try {
             return new URIBuilder()
                     .setScheme("http")
                     .setHost(getIP.get())
                     .setPort(PORT)
-                    .setPath(path)
-                    .addParameter("seconds", String.valueOf(seconds))
-                    .build();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
-    URI uriWithLevel(String path, float level) {
-        try {
-            return new URIBuilder()
-                    .setScheme("http")
-                    .setHost(getIP.get())
-                    .setPort(PORT)
-                    .setPath(path)
+                    .setPath("/now")
                     .addParameter("level", String.valueOf(level))
+                    .build();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    URI fadeURI(float level, int seconds) {
+        try {
+            return new URIBuilder()
+                    .setScheme("http")
+                    .setHost(getIP.get())
+                    .setPort(PORT)
+                    .setPath("/fade")
+                    .addParameter("level", String.valueOf(level))
+                    .addParameter("seconds", String.valueOf(seconds))
                     .build();
         } catch (URISyntaxException e) {
             e.printStackTrace();
@@ -195,6 +166,21 @@ public class LightConnector {
         } catch (JSONException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    @RequiredArgsConstructor
+    static class RateLimiter <T> {
+        final float delay;
+        final T defaultValue;
+        long lastOnLevelRequest = 0;
+        T limit(Supplier<T> supplier) {
+            long now = System.currentTimeMillis();
+            if (now - lastOnLevelRequest > delay) {
+                lastOnLevelRequest = now;
+                return supplier.get();
+            } else
+                return defaultValue;
         }
     }
 

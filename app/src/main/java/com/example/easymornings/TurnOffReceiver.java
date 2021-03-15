@@ -20,11 +20,9 @@ public class TurnOffReceiver extends BroadcastReceiver {
 
         LightConnector lightConnector = new LightConnector(() -> preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
-        LightManager lightManager = new LightManager(lightConnector);
-
         Handler uiHandler = new Handler(Looper.myLooper());
 
-        lightManager.offNow().thenAccept((success) -> {
+        lightConnector.setNow(0).thenAccept((success) -> {
             if (!success)
                 uiHandler.post(() -> Toast.makeText(context, "Could not turn off", Toast.LENGTH_LONG).show());
         });
