@@ -1,6 +1,8 @@
 package com.example.easymornings;
 
 import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -8,6 +10,8 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
+
+import androidx.core.app.NotificationCompat;
 
 public class FadeOnReceiver extends BroadcastReceiver {
 
@@ -26,10 +30,11 @@ public class FadeOnReceiver extends BroadcastReceiver {
 
         lightConnector.fade(1, fadeTime).thenAccept((success) -> {
             if (!success)
-                uiHandler.post(() -> Toast.makeText(context, "Could not fade on", Toast.LENGTH_LONG).show());
+                NotificationUtils.displayProblemNotification(context, "Could not fade on", NotificationUtils.FADE_ON_RECEIVER_PROBLEM);
         });
 
         alarmController.scheduleNextFadeIn();
 
     }
+
 }

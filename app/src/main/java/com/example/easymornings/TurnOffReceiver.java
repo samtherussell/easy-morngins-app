@@ -24,7 +24,7 @@ public class TurnOffReceiver extends BroadcastReceiver {
 
         lightConnector.setNow(0).thenAccept((success) -> {
             if (!success)
-                uiHandler.post(() -> Toast.makeText(context, "Could not turn off", Toast.LENGTH_LONG).show());
+                NotificationUtils.displayProblemNotification(context, "Could not turn off", NotificationUtils.FADE_ON_RECEIVER_PROBLEM);
         });
 
         alarmController.scheduleNextOff();
