@@ -1,8 +1,5 @@
 package com.example.easymornings;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-
 import java.util.Calendar;
 
 public class AppPreferenceValues {

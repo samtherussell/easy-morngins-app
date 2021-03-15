@@ -27,7 +27,7 @@ public class SharedPreferencesConnector implements PreferencesConnector {
 
     @Override
     public void setInt(String name, int value) {
-        sharedPreferences.edit().putInt(name, value).commit();
+        sharedPreferences.edit().putInt(name, value).apply();
     }
 
     @Override
@@ -37,7 +37,7 @@ public class SharedPreferencesConnector implements PreferencesConnector {
 
     @Override
     public void setLong(String name, long value) {
-        sharedPreferences.edit().putLong(name, value).commit();
+        sharedPreferences.edit().putLong(name, value).apply();
     }
 
     @Override
@@ -47,7 +47,7 @@ public class SharedPreferencesConnector implements PreferencesConnector {
 
     @Override
     public void setBoolean(String name, boolean value) {
-        sharedPreferences.edit().putBoolean(name, value).commit();
+        sharedPreferences.edit().putBoolean(name, value).apply();
     }
 
     @Override
@@ -57,6 +57,6 @@ public class SharedPreferencesConnector implements PreferencesConnector {
 
     @Override
     public void setString(String name, String value) {
-        sharedPreferences.edit().putString(name, value).commit();
+        sharedPreferences.edit().putString(name, value).apply();
     }
 }
