@@ -23,6 +23,8 @@ import android.widget.Toast;
 
 import com.example.easymornings.LightConnector.LightState;
 
+import java.util.function.Predicate;
+
 import static com.example.easymornings.TimeUtils.getFadeTimeString;
 
 public class MainActivity extends AppCompatActivity {
@@ -67,42 +69,16 @@ public class MainActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
                     float level = ((float) progress) / seekBar.getMax();
-                    lightManager.onNow(level);
+                    lightManager.on(level);
                 }
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
+            public void onStartTrackingTouch(SeekBar seekBar) {}
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
-            }
+            public void onStopTrackingTouch(SeekBar seekBar) {}
         });
-
-        onButton = findViewById(R.id.onbutton);
-        onButton.setOnClickListener(v -> onNow());
-
-        offButton = findViewById(R.id.offbutton);
-        offButton.setOnClickListener(v -> offNow());
-
-        plus5sec = findViewById(R.id.plus5sec);
-        plus5sec.setOnClickListener(v -> addFadeTime(5));
-
-        plus1min = findViewById(R.id.plus1min);
-        plus1min.setOnClickListener(v -> addFadeTime(60));
-
-        plus5min = findViewById(R.id.plus5min);
-        plus5min.setOnClickListener(v -> addFadeTime(5*60));
-
-        dismiss = findViewById(R.id.dismiss);
-        dismiss.setVisibility(View.GONE);
-        dismiss.setOnClickListener(v -> dismissAlarm());
-        sleep = findViewById(R.id.sleep);
-        sleep.setVisibility(View.GONE);
-        sleep.setOnClickListener(v -> onSleepClick());
 
         uiHandler = new Handler(Looper.myLooper());
 
@@ -110,6 +86,40 @@ public class MainActivity extends AppCompatActivity {
                 preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
         lightManager = new LightManager(lightConnector);
+
+        lightManager.addFadeTimeSubscriber((s) -> uiHandler.post(() -> this.updateSwitchHint(s)));
+
+        lightManager.addLightStateSubscriber((s) -> uiHandler.post(() -> {
+            this.updateSwitchHint(s);
+            this.updateTimeButtons(s);
+            this.updateSlider(s);
+        }));
+
+        lightManager.addLightLevelSubscriber((s) -> uiHandler.post(() -> this.updateSlider(s)));
+
+        lightManager.addActionFailedSubscriber(() -> uiHandler.post(this::notifyActionFailed));
+
+        onButton = findViewById(R.id.onbutton);
+        onButton.setOnClickListener(v -> lightManager.on());
+
+        offButton = findViewById(R.id.offbutton);
+        offButton.setOnClickListener(v -> lightManager.off());
+
+        plus5sec = findViewById(R.id.plus5sec);
+        plus5sec.setOnClickListener(v -> lightManager.addFadeTime(5));
+
+        plus1min = findViewById(R.id.plus1min);
+        plus1min.setOnClickListener(v -> lightManager.addFadeTime(60));
+
+        plus5min = findViewById(R.id.plus5min);
+        plus5min.setOnClickListener(v -> lightManager.addFadeTime(5*60));
+
+        dismiss = findViewById(R.id.dismiss);
+        dismiss.setVisibility(View.GONE);
+        dismiss.setOnClickListener(v -> dismissAlarm());
+        sleep = findViewById(R.id.sleep);
+        sleep.setVisibility(View.GONE);
+        sleep.setOnClickListener(v -> onSleepClick());
 
         Bundle extras = getIntent().getExtras();
         runCommand(extras);
@@ -163,10 +173,6 @@ public class MainActivity extends AppCompatActivity {
         alarmController.cancelSleepAlarm();
     }
 
-    void notifyActionFailed() {
-        Toast.makeText(getApplicationContext(), getString(R.string.action_failed), Toast.LENGTH_LONG).show();
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -180,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void checkLightState() {
-        lightManager.checkLightState().thenAccept(r -> { if (r) uiHandler.post(this::updateUI); });
+        lightManager.checkLightState();
         uiHandler.postDelayed(this::checkLightState, 2000);
     }
 
@@ -192,64 +198,34 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
     }
 
-    private void addFadeTime(int amount) {
-        lightManager.addFadeTime(amount);
-        updateUI();
+    void notifyActionFailed() {
+        Toast.makeText(getApplicationContext(), getString(R.string.action_failed), Toast.LENGTH_LONG).show();
     }
 
-    private void onNow() {
-        if (lightManager.fadeTime == 0)
-            lightManager.onNow().thenAccept(this::updateOrNotify);
-        else
-            lightManager.fadeOnNow(lightManager.fadeTime).thenAccept(this::updateOrNotify);
-    }
-
-    private void offNow() {
-        if (lightManager.fadeTime == 0)
-            lightManager.offNow().thenAccept(this::updateOrNotify);
-        else
-            lightManager.fadeOffNow(lightManager.fadeTime).thenAccept(this::updateOrNotify);
-    }
-
-    void updateOrNotify(boolean success) {
-        if (success)
-            uiHandler.post(this::updateUI);
-        else
-            uiHandler.post(this::notifyActionFailed);
-    }
-
-    synchronized void updateUI() {
-        LightState lightState = lightManager.getLightState();
-        int fadeTime = lightManager.getFadeTime();
-        updateSlider(lightState);
-        updateSwitchHint(lightState, fadeTime);
-        updateTimeButtons(lightState);
-    }
-
-    private void updateTimeButtons(LightState lightState) {
+    synchronized private void updateTimeButtons(LightManager.State state) {
+        LightState lightState = state.getLightState();
         boolean enabled = lightState == LightState.OFF || lightState == LightState.ON;
         plus5sec.setEnabled(enabled);
         plus1min.setEnabled(enabled);
         plus5min.setEnabled(enabled);
     }
 
-    private void updateSlider(LightState lightState) {
-        switch (lightState) {
+    synchronized private void updateSlider(LightManager.State state) {
+        switch (state.getLightState()) {
             case OFF:
                 dimmerBar.setProgress(0, false);
                 break;
             case ON:
-                dimmerBar.setProgress(dimmerBar.getMax(), false);
-                break;
             case FADING_ON:
             case FADING_OFF:
-                dimmerBar.setProgress(dimmerBar.getMax() / 2, false);
+                dimmerBar.setProgress((int) (dimmerBar.getMax() * state.getLevel()), false);
         }
     }
 
-    void updateSwitchHint(LightState lightState, Integer fadeTime) {
+    synchronized void updateSwitchHint(LightManager.State state) {
         final String message;
-        switch (lightState) {
+        int fadeTime = state.getFadeTime();
+        switch (state.getLightState()) {
             case OFF:
                 if (fadeTime == 0)
                     message = getString(R.string.instant_on);

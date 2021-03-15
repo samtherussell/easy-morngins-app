@@ -1,6 +1,16 @@
 package com.example.easymornings;
 
-import android.util.JsonReader;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import cz.msebera.android.httpclient.client.config.RequestConfig;
 import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
@@ -10,16 +20,8 @@ import cz.msebera.android.httpclient.client.methods.HttpRequestBase;
 import cz.msebera.android.httpclient.client.utils.URIBuilder;
 import cz.msebera.android.httpclient.impl.client.CloseableHttpClient;
 import cz.msebera.android.httpclient.impl.client.HttpClients;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.function.Supplier;
+import lombok.Builder;
+import lombok.Value;
 
 
 public class LightConnector {
@@ -53,20 +55,34 @@ public class LightConnector {
         }
     }
 
-    public CompletableFuture<LightState> getLightState() {
+    @Value
+    @Builder
+    static class LightStatus {
+        LightState lightState;
+        double lightLevel;
+        static LightStatus NotConnected()  {
+            return new LightStatus(LightState.NOT_CONNECTED, 0);
+        }
+    }
+
+    public CompletableFuture<LightStatus> getLightStatus() {
         return CompletableFuture.supplyAsync(() -> {
             final String response;
             try {
                 response = get(simpleUri("/status"));
             } catch (IOException e) {
                 e.printStackTrace();
-                return LightState.NOT_CONNECTED;
+                return LightStatus.NotConnected();
             }
+
             try {
-                return parseLightState(getStringFromJson(response, "state"));
+                JSONObject json = new JSONObject(response);
+                LightState state = parseLightState(json.getString("state"));
+                double level = json.getDouble("level");
+                return LightStatus.builder().lightState(state).lightLevel(level).build();
             } catch (Exception e) {
                 e.printStackTrace();
-                return LightState.NOT_CONNECTED;
+                return LightStatus.NotConnected();
             }
         }, executor);
     }
@@ -173,34 +189,13 @@ public class LightConnector {
     }
 
     boolean checkResponse(String response) {
-        return getBoolFromJson(response, "success");
-
-    }
-
-    boolean getBoolFromJson(String json, String name) {
-        JsonReader jsonReader = new JsonReader(new StringReader(json));
         try {
-            jsonReader.beginObject();
-            while (jsonReader.hasNext())
-                if (jsonReader.nextName().equals(name))
-                    return jsonReader.nextBoolean();
-            return false;
-        } catch (IOException e) {
+            JSONObject json = new JSONObject(response);
+            return json.getBoolean("success");
+        } catch (JSONException e) {
             e.printStackTrace();
             return false;
         }
-    }
-
-    String getStringFromJson(String response, String name) throws IOException {
-        if (name.length() == 0) {
-            throw new IOException("Empty input");
-        }
-        JsonReader jsonReader = new JsonReader(new StringReader(response));
-        jsonReader.beginObject();
-        while (jsonReader.hasNext())
-            if (jsonReader.nextName().equals(name))
-                return jsonReader.nextString();
-       throw new IOException("Reached end of json");
     }
 
 }
