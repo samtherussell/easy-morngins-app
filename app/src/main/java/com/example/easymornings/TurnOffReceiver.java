@@ -22,7 +22,7 @@ public class TurnOffReceiver extends BroadcastReceiver {
 
         lightConnector.setNow(0).thenAccept((success) -> {
             if (!success)
-                NotificationUtils.displayProblemNotification(context, "Could not turn off", NotificationUtils.FADE_ON_RECEIVER_PROBLEM);
+                NotificationUtils.displayProblemNotification(context, "Could not turn off", NotificationUtils.TURN_OFF_RECEIVER_PROBLEM);
         });
 
         alarmController.scheduleNextOff();
