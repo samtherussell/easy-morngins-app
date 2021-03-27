@@ -1,6 +1,6 @@
-package com.example.easymornings;
+package com.example.easymornings.light;
 
-import com.example.easymornings.LightConnector.LightState;
+import com.example.easymornings.light.LightConnector.LightState;
 
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -22,20 +22,20 @@ public class LightManager {
     final ArrayList<Runnable> actionFailedSubscribers = new ArrayList<>();
 
     @Value @Builder
-    static class State {
+    public static class State {
         LightState lightState;
         int fadeTime;
         double level;
     }
 
-    LightManager(LightConnector lightConnector) {
+    public LightManager(LightConnector lightConnector) {
         this.lightConnector = lightConnector;
         this.fadeTime = 0;
         this.lightState = LightState.UNDEFINED;
         this.level = 0;
     }
 
-    void addFadeTime(int amount) {
+    public void addFadeTime(int amount) {
         fadeTime += amount;
         State state = getState();
         fadeTimeSubscribers.forEach(sub -> sub.accept(state));
@@ -55,15 +55,15 @@ public class LightManager {
         });
     }
 
-    CompletableFuture<Boolean> on() {
+    public CompletableFuture<Boolean> on() {
         return setLevel(1);
     }
 
-    CompletableFuture<Boolean> off() {
+    public CompletableFuture<Boolean> off() {
         return setLevel(0);
     }
 
-    CompletableFuture<Boolean> setLevel(float level) {
+    public CompletableFuture<Boolean> setLevel(float level) {
         if (fadeTime == 0)
             return setNow(level);
         else
@@ -108,19 +108,19 @@ public class LightManager {
                 .build();
     }
 
-    void addFadeTimeSubscriber(Consumer<State> subscriber) {
+    public void addFadeTimeSubscriber(Consumer<State> subscriber) {
         fadeTimeSubscribers.add(subscriber);
     }
 
-    void addLightStateSubscriber(Consumer<State> subscriber) {
+    public void addLightStateSubscriber(Consumer<State> subscriber) {
         lightStateSubscribers.add(subscriber);
     }
 
-    void addLightLevelSubscriber(Consumer<State> subscriber) {
+    public void addLightLevelSubscriber(Consumer<State> subscriber) {
         lightLevelSubscribers.add(subscriber);
     }
 
-    void addActionFailedSubscriber(Runnable subscriber) {
+    public void addActionFailedSubscriber(Runnable subscriber) {
         actionFailedSubscribers.add(subscriber);
     }
 

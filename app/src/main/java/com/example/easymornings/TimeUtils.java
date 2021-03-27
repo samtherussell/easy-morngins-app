@@ -15,8 +15,12 @@ class TimeUtils {
         return (int) (time / (60 * 60));
     }
 
-    static long getTimestamp(int hour, int minute) {
-        return (long) (hour * 60 + minute) * 60;
+    static int getDelay(int minute, int second) {
+        return (minute * 60 + second);
+    }
+
+    static int getTimestamp(int hour, int minute) {
+        return (hour * 60 + minute) * 60;
     }
 
     static int getSecondsUntil(long epocMilli) {

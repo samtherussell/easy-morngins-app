@@ -11,9 +11,10 @@ import static android.app.NotificationManager.IMPORTANCE_DEFAULT;
 
 public class NotificationUtils {
 
-    static final String CHANNEL_NAME = "Easy Mornings";
-    static final int FADE_ON_RECEIVER_PROBLEM = 0;
-    static final int TURN_OFF_RECEIVER_PROBLEM = 1;
+    public static final String CHANNEL_NAME = "Easy Mornings";
+    public static final int FADE_ON_RECEIVER_PROBLEM = 0;
+    public static final int TURN_OFF_RECEIVER_PROBLEM = 1;
+    public static final int ALARM_SOUND_RECEIVER_PROBLEM = 1;
 
     public static void displayProblemNotification(Context context, String text, int id) {
         NotificationUtils.createNotificationChannel(context);

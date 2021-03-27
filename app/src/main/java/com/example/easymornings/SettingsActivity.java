@@ -3,12 +3,14 @@ package com.example.easymornings;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.os.Handler;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.easymornings.light.LightConnector;
+import com.example.easymornings.preference.AppPreferenceValues;
 
 public class SettingsActivity extends AppCompatActivity {
 

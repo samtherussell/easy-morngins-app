@@ -1,6 +1,5 @@
 package com.example.easymornings;
 
-import android.app.AlarmManager;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
@@ -21,16 +20,22 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.easymornings.LightConnector.LightState;
+import com.example.easymornings.light.LightConnector;
+import com.example.easymornings.light.LightConnector.LightState;
+import com.example.easymornings.db.Alarm;
+import com.example.easymornings.db.AlarmRepository;
+import com.example.easymornings.light.LightManager;
+import com.example.easymornings.preference.AppPreferenceValues;
+import com.example.easymornings.preference.PreferencesConnector;
+import com.example.easymornings.preference.SharedPreferencesConnector;
 
+import static com.example.easymornings.AlarmScheduler.COMMAND_EXTRA;
+import static com.example.easymornings.AlarmScheduler.SLEEP_SOUND_COMMAND;
+import static com.example.easymornings.AlarmScheduler.SOUND_START_COMMAND;
+import static com.example.easymornings.AlarmScheduler.UID_EXTRA;
 import static com.example.easymornings.TimeUtils.getFadeTimeString;
 
 public class MainActivity extends AppCompatActivity {
-
-    public static final String COMMAND_EXTRA = "command";
-    public static final int SOUND_START_COMMAND = 2;
-    public static final int SLEEP_SOUND_COMMAND = 4;
-    public static final int ALARM_SLEEP_DELAY = 5 * 60;
 
     Handler uiHandler;
     LightManager lightManager;
@@ -39,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
     ImageView onButton, offButton;
     Button plus5sec, plus1min, plus5min, dismiss, sleep;
     MediaPlayer mediaPlayer;
-    AlarmController alarmController;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,11 +55,6 @@ public class MainActivity extends AppCompatActivity {
         keyguardManager.requestDismissKeyguard(this, null);
         setShowWhenLocked(true);
         setContentView(R.layout.activity_main);
-
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        SharedPreferences sharedPreferences = getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
-        PreferencesConnector preferencesConnector = new SharedPreferencesConnector(sharedPreferences);
-        alarmController = new AlarmController(alarmManager, preferencesConnector, getApplicationContext());
 
         findViewById(R.id.settings).setOnClickListener((v) -> startActivity(new Intent(this, SettingsActivity.class)));
         findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarmActivity.class)));
@@ -79,6 +79,9 @@ public class MainActivity extends AppCompatActivity {
         });
 
         uiHandler = new Handler(Looper.myLooper());
+
+        SharedPreferences sharedPreferences = getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
+        PreferencesConnector preferencesConnector = new SharedPreferencesConnector(sharedPreferences);
 
         LightConnector lightConnector = new LightConnector(() ->
                 preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
@@ -114,61 +117,14 @@ public class MainActivity extends AppCompatActivity {
 
         dismiss = findViewById(R.id.dismiss);
         dismiss.setVisibility(View.GONE);
-        dismiss.setOnClickListener(v -> dismissAlarm());
+
         sleep = findViewById(R.id.sleep);
         sleep.setVisibility(View.GONE);
-        sleep.setOnClickListener(v -> onSleepClick());
 
         Bundle extras = getIntent().getExtras();
-        runCommand(extras);
-    }
-
-    private void runCommand(Bundle extras) {
-        if (extras != null && extras.containsKey(COMMAND_EXTRA)) {
-
-            int command = extras.getInt(COMMAND_EXTRA);
-            switch (command) {
-                case SOUND_START_COMMAND:
-                    alarmController.scheduleNextAlarm();
-                case SLEEP_SOUND_COMMAND:
-                    soundAlarm();
-                    break;
-            }
+        if (extras != null) {
+            handleAlarm(extras);
         }
-
-    }
-
-    void soundAlarm() {
-        if (mediaPlayer == null || !mediaPlayer.isPlaying()) {
-            AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build();
-
-            String uriString = alarmController.getAlarmSound();
-            if (uriString != null) {
-                mediaPlayer = MediaPlayer.create(this, Uri.parse(uriString), null, audioAttributes, audioManager.generateAudioSessionId());
-            }
-
-            if (mediaPlayer == null) {
-                mediaPlayer = MediaPlayer.create(this, R.raw.alarm, audioAttributes, audioManager.generateAudioSessionId());
-            }
-
-            mediaPlayer.start();
-            mediaPlayer.setLooping(true);
-
-            dismiss.setVisibility(View.VISIBLE);
-            sleep.setVisibility(View.VISIBLE);
-        }
-    }
-
-    void dismissAlarm() {
-        if (mediaPlayer != null && mediaPlayer.isPlaying())
-            mediaPlayer.stop();
-        dismiss.setVisibility(View.GONE);
-        sleep.setVisibility(View.GONE);
-        alarmController.cancelSleepAlarm();
     }
 
     @Override
@@ -188,10 +144,65 @@ public class MainActivity extends AppCompatActivity {
         uiHandler.postDelayed(this::checkLightState, 2000);
     }
 
-    private void onSleepClick() {
+    private void handleAlarm(Bundle extras) {
+        if (!extras.containsKey(COMMAND_EXTRA) || !extras.containsKey(UID_EXTRA)) {
+            NotificationUtils.displayProblemNotification(getApplicationContext(), "Could not play alarm", NotificationUtils.ALARM_SOUND_RECEIVER_PROBLEM);
+        }
+        int command = extras.getInt(COMMAND_EXTRA);
+        if (command == SLEEP_SOUND_COMMAND || command == SOUND_START_COMMAND) {
+            AlarmScheduler alarmScheduler = AlarmScheduler.create(getApplicationContext());
+            int uid = extras.getInt(UID_EXTRA);
+            AlarmRepository alarmRepository = AlarmRepository.create(getApplicationContext());
+            alarmRepository.getAlarm(uid).thenAccept(alarm -> {
+                if (command == SOUND_START_COMMAND)
+                    alarmScheduler.scheduleNextAlarm(alarm);
+
+                uiHandler.post(() -> {
+                    soundAlarm(alarm.alarmSound);
+
+                    dismiss.setVisibility(View.VISIBLE);
+                    dismiss.setOnClickListener(v -> dismissAlarm(alarmScheduler, alarm));
+
+                    sleep.setVisibility(View.VISIBLE);
+                    sleep.setOnClickListener(v -> onSleepClick(alarmScheduler, alarm));
+                });
+            });
+        }
+    }
+
+    void soundAlarm(String alarmSound) {
+        if (mediaPlayer == null || !mediaPlayer.isPlaying()) {
+            AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+
+            if (alarmSound != null) {
+                mediaPlayer = MediaPlayer.create(this, Uri.parse(alarmSound), null, audioAttributes, audioManager.generateAudioSessionId());
+            }
+
+            if (mediaPlayer == null) {
+                mediaPlayer = MediaPlayer.create(this, R.raw.alarm, audioAttributes, audioManager.generateAudioSessionId());
+            }
+
+            mediaPlayer.start();
+            mediaPlayer.setLooping(true);
+        }
+    }
+
+    private void dismissAlarm(AlarmScheduler alarmScheduler, Alarm alarm) {
+        if (mediaPlayer != null && mediaPlayer.isPlaying())
+            mediaPlayer.stop();
+        dismiss.setVisibility(View.GONE);
+        sleep.setVisibility(View.GONE);
+        alarmScheduler.cancelSleepAlarm(alarm);
+    }
+
+    private void onSleepClick(AlarmScheduler alarmScheduler, Alarm alarm) {
         mediaPlayer.stop();
         sleep.setVisibility(View.GONE);
-        int delay = alarmController.scheduleSleepAlarm(ALARM_SLEEP_DELAY);
+        int delay = alarmScheduler.scheduleSleepAlarm(alarm);
         String msg = String.format("Alarm will sound in %s", TimeUtils.getTimeIntervalString(delay));
         Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
     }

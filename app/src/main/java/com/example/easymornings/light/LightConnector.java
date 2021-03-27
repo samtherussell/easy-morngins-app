@@ -1,4 +1,4 @@
-package com.example.easymornings;
+package com.example.easymornings.light;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,12 +32,12 @@ public class LightConnector {
     final static int PORT = 8080;
     RateLimiter<CompletableFuture<Boolean>> rateLimiter = new RateLimiter<>(50, CompletableFuture.completedFuture(true));
 
-    LightConnector(Supplier<String> getIP) {
+    public LightConnector(Supplier<String> getIP) {
         executor = Executors.newSingleThreadExecutor();
         this.getIP = getIP;
     }
 
-    enum LightState {UNDEFINED, CONSTANT, FADING, NOT_CONNECTED}
+    public enum LightState {UNDEFINED, CONSTANT, FADING, NOT_CONNECTED}
 
     private LightState parseLightState(String lightState) {
         switch (lightState) {
@@ -52,7 +52,7 @@ public class LightConnector {
 
     @Value
     @Builder
-    static class LightStatus {
+    public static class LightStatus {
         LightState lightState;
         double lightLevel;
         static LightStatus NotConnected()  {
@@ -69,19 +69,18 @@ public class LightConnector {
                 double level = json.getDouble("level");
                 return LightStatus.builder().lightState(state).lightLevel(level).build();
             } catch (Exception e) {
-                e.printStackTrace();
                 return LightStatus.NotConnected();
             }
         }, executor);
     }
 
-    CompletableFuture<Boolean> setNow(float level) {
+    public CompletableFuture<Boolean> setNow(float level) {
         return rateLimiter.limit(() ->
                 CompletableFuture.supplyAsync(() -> postAndCheck(setNowURI(level)), executor)
         );
     }
 
-    CompletableFuture<Boolean> fade(float level, int period) {
+    public CompletableFuture<Boolean> fade(float level, int period) {
         return rateLimiter.limit(() ->
                 CompletableFuture.supplyAsync(() -> postAndCheck(fadeURI(level, period)), executor)
         );
@@ -91,7 +90,6 @@ public class LightConnector {
         try {
             return checkResponse(post(path));
         } catch (Exception e) {
-            e.printStackTrace();
             return false;
         }
     }
@@ -113,7 +111,6 @@ public class LightConnector {
                     .setPath("/status")
                     .build();
         } catch (URISyntaxException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -128,7 +125,6 @@ public class LightConnector {
                     .addParameter("level", String.valueOf(level))
                     .build();
         } catch (URISyntaxException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -144,7 +140,6 @@ public class LightConnector {
                     .addParameter("seconds", String.valueOf(seconds))
                     .build();
         } catch (URISyntaxException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -164,7 +159,6 @@ public class LightConnector {
             JSONObject json = new JSONObject(response);
             return json.getBoolean("success");
         } catch (JSONException e) {
-            e.printStackTrace();
             return false;
         }
     }

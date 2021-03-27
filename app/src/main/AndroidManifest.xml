@@ -14,11 +14,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.EasyMornings">
         <receiver
-            android:name=".TurnOffReceiver"
+            android:name=".alarmreceiver.TurnOffReceiver"
             android:enabled="true"
-            android:exported="true"></receiver>
+            android:exported="true" />
         <receiver
-            android:name=".FadeOnReceiver"
+            android:name=".alarmreceiver.FadeOnReceiver"
             android:enabled="true"
             android:exported="true" />
 
