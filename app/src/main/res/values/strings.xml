@@ -5,7 +5,7 @@
     <string name="fading">fading</string>
     <string name="minute">min</string>
     <string name="second">sec</string>
-    <string name="plus5sec">+5 sec</string>
+    <string name="plus15sec">+15 sec</string>
     <string name="plus1min">+1 min</string>
     <string name="plus5min">+5 min</string>
     <string name="notconnected">not connected</string>

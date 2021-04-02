@@ -8,11 +8,11 @@
     tools:context=".MainActivity">
 
     <Button
-        android:id="@+id/plus5sec"
+        android:id="@+id/plus15sec"
         android:layout_width="wrap_content"
         android:layout_height="60sp"
         android:layout_marginBottom="30sp"
-        android:text="@string/plus5sec"
+        android:text="@string/plus15sec"
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/plus1min"
@@ -27,7 +27,7 @@
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/plus5min"
-        app:layout_constraintStart_toEndOf="@+id/plus5sec" />
+        app:layout_constraintStart_toEndOf="@+id/plus15sec" />
 
     <Button
         android:id="@+id/plus5min"

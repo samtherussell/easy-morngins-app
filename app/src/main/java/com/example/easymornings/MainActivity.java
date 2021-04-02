@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
     TextView switchHint;
     SeekBar dimmerBar;
     ImageView onButton, offButton;
-    Button plus5sec, plus1min, plus5min, dismiss, sleep;
+    Button plus15sec, plus1min, plus5min, dismiss, sleep;
     MediaPlayer mediaPlayer;
 
 
@@ -107,8 +107,8 @@ public class MainActivity extends AppCompatActivity {
         offButton = findViewById(R.id.offbutton);
         offButton.setOnClickListener(v -> lightManager.off());
 
-        plus5sec = findViewById(R.id.plus5sec);
-        plus5sec.setOnClickListener(v -> lightManager.addFadeTime(5));
+        plus15sec = findViewById(R.id.plus15sec);
+        plus15sec.setOnClickListener(v -> lightManager.addFadeTime(15));
 
         plus1min = findViewById(R.id.plus1min);
         plus1min.setOnClickListener(v -> lightManager.addFadeTime(60));
@@ -215,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
     synchronized private void updateTimeButtons(LightManager.State state) {
         boolean enabled = state.getLightState() != LightState.NOT_CONNECTED;
         int visibility = enabled ? View.VISIBLE : View.INVISIBLE;
-        plus5sec.setVisibility(visibility);
+        plus15sec.setVisibility(visibility);
         plus1min.setVisibility(visibility);
         plus5min.setVisibility(visibility);
     }
