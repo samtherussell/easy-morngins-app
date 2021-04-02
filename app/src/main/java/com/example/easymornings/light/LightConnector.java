@@ -1,16 +1,22 @@
 package com.example.easymornings.light;
 
+import android.util.Log;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import cz.msebera.android.httpclient.client.config.RequestConfig;
 import cz.msebera.android.httpclient.client.methods.CloseableHttpResponse;
@@ -149,9 +155,9 @@ public class LightConnector {
         request.setConfig(RequestConfig.custom().setConnectTimeout(1000).build());
         CloseableHttpResponse response = httpClient.execute(request);
         InputStream content = response.getEntity().getContent();
-        byte[] bytes = new byte[content.available()];
-        content.read(bytes);
-        return new String(bytes);
+        InputStreamReader inputStreamReader = new InputStreamReader(content, StandardCharsets.US_ASCII);
+        BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+        return bufferedReader.lines().collect(Collectors.joining());
     }
 
     boolean checkResponse(String response) {
