@@ -94,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
             this.updateSwitchHint(s);
             this.updateTimeButtons(s);
             this.updateSlider(s);
+            this.updateOnOffButtons(s);
         }));
 
         lightManager.addLightLevelSubscriber((s) -> uiHandler.post(() -> this.updateSlider(s)));
@@ -212,15 +213,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     synchronized private void updateTimeButtons(LightManager.State state) {
-        LightState lightState = state.getLightState();
-        boolean enabled = lightState != LightState.NOT_CONNECTED;
-        plus5sec.setEnabled(enabled);
-        plus1min.setEnabled(enabled);
-        plus5min.setEnabled(enabled);
+        boolean enabled = state.getLightState() != LightState.NOT_CONNECTED;
+        int visibility = enabled ? View.VISIBLE : View.INVISIBLE;
+        plus5sec.setVisibility(visibility);
+        plus1min.setVisibility(visibility);
+        plus5min.setVisibility(visibility);
     }
 
     synchronized private void updateSlider(LightManager.State state) {
+        boolean enabled = state.getLightState() != LightState.NOT_CONNECTED;
+        int visibility = enabled ? View.VISIBLE : View.INVISIBLE;
+        dimmerBar.setVisibility(visibility);
+
         dimmerBar.setProgress((int) (dimmerBar.getMax() * state.getLevel()), false);
+    }
+
+    private void updateOnOffButtons(LightManager.State state) {
+        boolean enabled = state.getLightState() != LightState.NOT_CONNECTED;
+        int visibility = enabled ? View.VISIBLE : View.INVISIBLE;
+        onButton.setVisibility(visibility);
+        offButton.setVisibility(visibility);
     }
 
     synchronized void updateSwitchHint(LightManager.State state) {
