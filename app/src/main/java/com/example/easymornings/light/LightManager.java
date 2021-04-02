@@ -41,8 +41,8 @@ public class LightManager {
         fadeTimeSubscribers.forEach(sub -> sub.accept(state));
     }
 
-    public void checkLightState() {
-        lightConnector.getLightStatus().thenAccept(status -> {
+    public CompletableFuture<Boolean> checkLightState() {
+        return lightConnector.getLightStatus().thenApply(status -> {
             boolean diffLightState = lightState != status.getLightState();
             boolean diffLightLevel = level != status.getLightLevel();
             level = status.getLightLevel();
@@ -52,6 +52,7 @@ public class LightManager {
                 lightStateSubscribers.forEach(sub -> sub.accept(state));
             if (diffLightLevel)
                 lightLevelSubscribers.forEach(sub -> sub.accept(state));
+            return diffLightState || diffLightLevel;
         });
     }
 

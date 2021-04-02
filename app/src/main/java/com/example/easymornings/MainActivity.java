@@ -44,7 +44,9 @@ public class MainActivity extends AppCompatActivity {
     ImageView onButton, offButton;
     Button plus15sec, plus1min, plus5min, dismiss, sleep;
     MediaPlayer mediaPlayer;
-
+    final int MAX_STATUS_CHECK_DELAY = 2000;
+    final int MIN_STATUS_CHECK_DELAY = 100;
+    int statusCheckDelay = MIN_STATUS_CHECK_DELAY;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -141,8 +143,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void checkLightState() {
-        lightManager.checkLightState();
-        uiHandler.postDelayed(this::checkLightState, 2000);
+        lightManager.checkLightState().thenAccept(changed -> {
+            if (changed)
+                statusCheckDelay = MIN_STATUS_CHECK_DELAY;
+            else
+                statusCheckDelay = Math.min(statusCheckDelay * 2, MAX_STATUS_CHECK_DELAY);
+            onPause();
+            uiHandler.postDelayed(this::checkLightState, statusCheckDelay);
+        });
     }
 
     private void handleAlarm(Bundle extras) {
