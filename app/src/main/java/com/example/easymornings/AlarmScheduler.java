@@ -50,19 +50,25 @@ public class AlarmScheduler {
 
     void cancelAlarms(Alarm alarm) {
         if (alarm.fadeOnDelay != null) {
-            cancelAlarm(new Intent(context, FadeOnReceiver.class), getFadeOnRequestCode(alarm.uid));
+            cancelBroadcastAlarm(new Intent(context, FadeOnReceiver.class), getFadeOnRequestCode(alarm.uid));
         }
         if (alarm.offDelay != null) {
-            cancelAlarm(new Intent(context, TurnOffReceiver.class), getTurnOffRequestCode(alarm.uid));
+            cancelBroadcastAlarm(new Intent(context, TurnOffReceiver.class), getTurnOffRequestCode(alarm.uid));
         }
         if (alarm.alarmTime != null) {
-            cancelAlarm(new Intent(context, MainActivity.class), getAlarmSoundRequestCode(alarm.uid));
-            cancelAlarm(new Intent(context, MainActivity.class), getSleepRequestCode(alarm.uid));
+            cancelActivityAlarm(new Intent(context, MainActivity.class), getAlarmSoundRequestCode(alarm.uid));
+            cancelActivityAlarm(new Intent(context, MainActivity.class), getSleepRequestCode(alarm.uid));
         }
     }
 
-    void cancelAlarm(Intent intent, int requestCode) {
+    void cancelBroadcastAlarm(Intent intent, int requestCode) {
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_NO_CREATE);
+        if (pendingIntent != null)
+            alarmManager.cancel(pendingIntent);
+    }
+
+    void cancelActivityAlarm(Intent intent, int requestCode) {
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_NO_CREATE);
         if (pendingIntent != null)
             alarmManager.cancel(pendingIntent);
     }
@@ -155,6 +161,6 @@ public class AlarmScheduler {
     }
 
     void cancelSleepAlarm(Alarm alarm) {
-        cancelAlarm(new Intent(context, MainActivity.class), getSleepRequestCode(alarm.uid));
+        cancelActivityAlarm(new Intent(context, MainActivity.class), getSleepRequestCode(alarm.uid));
     }
 }
