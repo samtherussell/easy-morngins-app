@@ -148,7 +148,6 @@ public class MainActivity extends AppCompatActivity {
                 statusCheckDelay = MIN_STATUS_CHECK_DELAY;
             else
                 statusCheckDelay = Math.min(statusCheckDelay * 2, MAX_STATUS_CHECK_DELAY);
-            onPause();
             uiHandler.postDelayed(this::checkLightState, statusCheckDelay);
         });
     }

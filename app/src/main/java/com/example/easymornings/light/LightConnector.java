@@ -152,7 +152,7 @@ public class LightConnector {
 
     String execute(HttpRequestBase request) throws IOException {
         CloseableHttpClient httpClient = HttpClients.createDefault();
-        request.setConfig(RequestConfig.custom().setConnectTimeout(1000).build());
+        request.setConfig(RequestConfig.custom().setConnectTimeout(1500).build());
         CloseableHttpResponse response = httpClient.execute(request);
         InputStream content = response.getEntity().getContent();
         InputStreamReader inputStreamReader = new InputStreamReader(content, StandardCharsets.US_ASCII);
