@@ -200,6 +200,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onBackPressed() {
+        if (mediaPlayer == null || !mediaPlayer.isPlaying()) {
+            super.onBackPressed();
+        }
+    }
+
     private void dismissAlarm(AlarmScheduler alarmScheduler, Alarm alarm) {
         if (mediaPlayer != null && mediaPlayer.isPlaying())
             mediaPlayer.stop();
