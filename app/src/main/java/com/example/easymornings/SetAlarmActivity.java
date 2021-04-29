@@ -38,16 +38,16 @@ public class SetAlarmActivity extends AppCompatActivity {
         ImageButton addButton = findViewById(R.id.add_new_alarm);
         addButton.setOnClickListener(this::addNewAlarm);
 
-        alarmController = AlarmController.create(getApplicationContext());
-        adapter = new AlarmArrayAdapter(this, alarmController);
         alarmList = findViewById(R.id.alarmlist);
-        alarmList.setAdapter(adapter);
 
         uiHandler = new Handler();
 
         new Thread(() -> {
+            alarmController = AlarmController.create(getApplicationContext());
+            adapter = new AlarmArrayAdapter(this, alarmController);
             alarmController.loadAlarmsFromStore();
             uiHandler.post(() -> {
+                alarmList.setAdapter(adapter);
                 adapter.notifyDataSetChanged();
                 findViewById(R.id.alarmloadingprogress).setVisibility(View.INVISIBLE);
             });
