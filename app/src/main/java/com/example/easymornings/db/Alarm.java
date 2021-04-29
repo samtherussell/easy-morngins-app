@@ -31,6 +31,10 @@ public class Alarm {
     @ColumnInfo(defaultValue = "true") public boolean saturday;
     @ColumnInfo(defaultValue = "true") public boolean sunday;
 
+    public boolean anyDayEnabled() {
+        return monday || tuesday || wednesday || thursday || friday || saturday || sunday;
+    }
+
     public boolean isDayEnabled(int dayOfWeek) {
         switch (dayOfWeek) {
             case Calendar.MONDAY:

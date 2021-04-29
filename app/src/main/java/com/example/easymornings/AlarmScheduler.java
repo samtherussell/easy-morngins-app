@@ -77,13 +77,11 @@ public class AlarmScheduler {
         Intent intent = new Intent(context, FadeOnReceiver.class);
         intent.putExtra(UID_EXTRA, alarm.uid);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, getFadeOnRequestCode(alarm.uid), intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        if (alarm.fadeOnDelay != null && alarm.alarmTime != null && alarm.enabled) {
+        if (alarm.fadeOnDelay != null && alarm.alarmTime != null && alarm.enabled && alarm.anyDayEnabled()) {
             int onTime = alarm.alarmTime - alarm.fadeOnDelay;
-            Optional<Long> nextAlarmMillis = getNextAlarmMillis(onTime, alarm::isDayEnabled);
-            return nextAlarmMillis.map(x -> {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, x, pendingIntent);
-                return TimeUtils.getSecondsUntil(x);
-            });
+            Long nextAlarmMillis = getNextAlarmMillis(onTime, alarm::isDayEnabled);
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
+            return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
@@ -95,12 +93,10 @@ public class AlarmScheduler {
         intent.putExtra(COMMAND_EXTRA, SOUND_START_COMMAND);
         intent.putExtra("uid", alarm.uid);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, getAlarmSoundRequestCode(alarm.uid), intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        if (alarm.enabled && alarm.alarmTime != null) {
-            Optional<Long> nextAlarmMillis = getNextAlarmMillis(alarm.alarmTime, alarm::isDayEnabled);
-            return nextAlarmMillis.map(x -> {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, x, pendingIntent);
-                return TimeUtils.getSecondsUntil(x);
-            });
+        if (alarm.enabled && alarm.alarmTime != null && alarm.anyDayEnabled()) {
+            Long nextAlarmMillis = getNextAlarmMillis(alarm.alarmTime, alarm::isDayEnabled);
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
+            return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
@@ -111,20 +107,18 @@ public class AlarmScheduler {
         Intent intent = new Intent(context, TurnOffReceiver.class);
         intent.putExtra("uid", alarm.uid);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, getTurnOffRequestCode(alarm.uid), intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        if (alarm.offDelay != null && alarm.alarmTime != null && alarm.enabled) {
+        if (alarm.offDelay != null && alarm.alarmTime != null && alarm.enabled && alarm.anyDayEnabled()) {
             int offTime = alarm.alarmTime + alarm.offDelay;
-            Optional<Long> nextAlarmMillis = getNextAlarmMillis(offTime, alarm::isDayEnabled);
-            return nextAlarmMillis.map(x -> {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, x, pendingIntent);
-                return TimeUtils.getSecondsUntil(x);
-            });
+            Long nextAlarmMillis = getNextAlarmMillis(offTime, alarm::isDayEnabled);
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
+            return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
         }
     }
 
-    public Optional<Long> getNextAlarmMillis(int timestamp, Function<Integer, Boolean> isDayEnabled) {
+    public Long getNextAlarmMillis(int timestamp, Function<Integer, Boolean> isDayEnabled) {
         int hour = TimeUtils.getHour(timestamp);
         int minute = TimeUtils.getMinute(timestamp);
         int second = TimeUtils.getSecond(timestamp);
@@ -136,18 +130,13 @@ public class AlarmScheduler {
         ) {
             now.add(Calendar.DATE, 1);
         }
-        int dayCount = 0;
-        while (!isDayEnabled.apply(now.get(Calendar.DAY_OF_WEEK)) && dayCount < 7) {
+        while (!isDayEnabled.apply(now.get(Calendar.DAY_OF_WEEK))) {
             now.add(Calendar.DATE, 1);
-            dayCount += 1;
-        }
-        if (dayCount >= 7) {
-            return Optional.empty();
         }
         now.set(Calendar.HOUR_OF_DAY, hour);
         now.set(Calendar.MINUTE, minute);
         now.set(Calendar.SECOND, second);
-        return Optional.of(now.getTimeInMillis());
+        return now.getTimeInMillis();
     }
 
     int scheduleSleepAlarm(Alarm alarm) {
