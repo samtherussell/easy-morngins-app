@@ -154,4 +154,15 @@
         android:orientation="vertical"
         />
 
+    <Switch
+        android:id="@+id/fade_timer_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Fade/Timer"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="5sp"
+        />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

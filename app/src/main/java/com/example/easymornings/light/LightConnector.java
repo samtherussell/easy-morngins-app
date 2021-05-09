@@ -43,7 +43,7 @@ public class LightConnector {
         this.getIP = getIP;
     }
 
-    public enum LightState {UNDEFINED, CONSTANT, FADING, NOT_CONNECTED}
+    public enum LightState {UNDEFINED, CONSTANT, FADING, TIMER, NOT_CONNECTED}
 
     private LightState parseLightState(String lightState) {
         switch (lightState) {
@@ -51,6 +51,8 @@ public class LightConnector {
                 return LightState.CONSTANT;
             case "LIGHT_STATE_FADING":
                 return LightState.FADING;
+            case "LIGHT_STATE_TIMER":
+                return LightState.TIMER;
             default:
                 throw new RuntimeException();
         }
@@ -61,8 +63,9 @@ public class LightConnector {
     public static class LightStatus {
         LightState lightState;
         double lightLevel;
+        int timeLeft;
         static LightStatus NotConnected()  {
-            return new LightStatus(LightState.NOT_CONNECTED, 0);
+            return new LightStatus(LightState.NOT_CONNECTED, 0, -1);
         }
     }
 
@@ -73,7 +76,8 @@ public class LightConnector {
                 JSONObject json = new JSONObject(response);
                 LightState state = parseLightState(json.getString("state"));
                 double level = json.getDouble("level");
-                return LightStatus.builder().lightState(state).lightLevel(level).build();
+                int timeLeft = (int) json.getDouble("time_left");
+                return LightStatus.builder().lightState(state).lightLevel(level).timeLeft(timeLeft).build();
             } catch (Exception e) {
                 return LightStatus.NotConnected();
             }
@@ -89,6 +93,12 @@ public class LightConnector {
     public CompletableFuture<Boolean> fade(float level, int period) {
         return rateLimiter.limit(() ->
                 CompletableFuture.supplyAsync(() -> postAndCheck(fadeURI(level, period)), executor)
+        );
+    }
+
+    public CompletableFuture<Boolean> timer(float level, int period) {
+        return rateLimiter.limit(() ->
+                CompletableFuture.supplyAsync(() -> postAndCheck(timerURI(level, period)), executor)
         );
     }
 
@@ -142,6 +152,21 @@ public class LightConnector {
                     .setHost(getIP.get())
                     .setPort(PORT)
                     .setPath("/fade")
+                    .addParameter("level", String.valueOf(level))
+                    .addParameter("seconds", String.valueOf(seconds))
+                    .build();
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    URI timerURI(float level, int seconds) {
+        try {
+            return new URIBuilder()
+                    .setScheme("http")
+                    .setHost(getIP.get())
+                    .setPort(PORT)
+                    .setPath("/timer")
                     .addParameter("level", String.valueOf(level))
                     .addParameter("seconds", String.valueOf(seconds))
                     .build();
