@@ -105,6 +105,7 @@ public class LightManager {
             if (success) {
                 this.fadeTime = 0;
                 this.lightState = LightState.FADING;
+                this.timeLeft = period;
                 State state = getState();
                 fadeTimeSubscribers.forEach(sub -> sub.accept(state));
                 lightStateSubscribers.forEach(sub -> sub.accept(state));
@@ -119,6 +120,7 @@ public class LightManager {
             if (success) {
                 this.fadeTime = 0;
                 this.lightState = LightState.FADING;
+                this.timeLeft = period;
                 State state = getState();
                 fadeTimeSubscribers.forEach(sub -> sub.accept(state));
                 lightStateSubscribers.forEach(sub -> sub.accept(state));
@@ -128,7 +130,7 @@ public class LightManager {
         });
     }
 
-    private State getState() {
+    public State getState() {
         return State.builder()
                 .fadeTime(fadeTime)
                 .lightState(lightState)

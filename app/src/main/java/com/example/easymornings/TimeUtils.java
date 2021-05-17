@@ -62,6 +62,25 @@ class TimeUtils {
         else if (minutes > 0)
             return String.format("%d min", minutes);
         else
-            return String.format("%d sec", seconds);
+            return "seconds";
+    }
+
+    static String getTimeLeftString(int seconds) {
+        if (seconds < 0)
+            return "#ERROR";
+        int minutes = seconds / 60;
+        seconds = seconds % 60;
+        if (minutes > 1) {
+            if (seconds > 45)
+                minutes += 1;
+            return String.format("%d min", minutes);
+        } else if (minutes > 0 || seconds > 45)
+            return "a min";
+        else if (seconds > 25)
+            return "30 sec";
+        else if (seconds > 10)
+            return "15 sec";
+        else
+            return "few sec";
     }
 }

@@ -35,12 +35,13 @@ import static com.example.easymornings.AlarmScheduler.SLEEP_SOUND_COMMAND;
 import static com.example.easymornings.AlarmScheduler.SOUND_START_COMMAND;
 import static com.example.easymornings.AlarmScheduler.UID_EXTRA;
 import static com.example.easymornings.TimeUtils.getFadeTimeString;
+import static com.example.easymornings.TimeUtils.getTimeLeftString;
 
 public class MainActivity extends AppCompatActivity {
 
     Handler uiHandler;
     LightManager lightManager;
-    TextView switchHint;
+    TextView switchHint, statusHint;
     SeekBar dimmerBar;
     ImageView onButton, offButton;
     Button plus15sec, plus1min, plus5min, dismiss, sleep;
@@ -64,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarmActivity.class)));
 
         switchHint = findViewById(R.id.switchhint);
+        statusHint = findViewById(R.id.statushint);
 
         uiHandler = new Handler(Looper.myLooper());
 
@@ -76,20 +78,24 @@ public class MainActivity extends AppCompatActivity {
         lightManager = new LightManager(lightConnector);
 
         lightManager.addFadeTimeSubscriber((s) -> uiHandler.post(() -> this.updateSwitchHint(s)));
-        lightManager.addTimeLeftSubscribers((s) -> uiHandler.post(() -> this.updateSwitchHint(s)));
+        lightManager.addTimeLeftSubscribers((s) -> uiHandler.post(() -> this.updateStatusHint(s)));
 
         lightManager.addLightStateSubscriber((s) -> uiHandler.post(() -> {
             this.updateSwitchHint(s);
             this.updateTimeButtons(s);
-            this.updateSlider(s);
             this.updateOnOffButtons(s);
+            this.updateStatusHint(s);
         }));
 
-        lightManager.addLightLevelSubscriber((s) -> uiHandler.post(() -> this.updateSlider(s)));
+        lightManager.addLightLevelSubscriber((s) -> uiHandler.post(() -> {
+            this.updateSlider(s);
+            this.updateStatusHint(s);
+        }));
 
         lightManager.addActionFailedSubscriber(() -> uiHandler.post(this::notifyActionFailed));
 
         fadeTimerSwitch = findViewById(R.id.fade_timer_switch);
+        fadeTimerSwitch.setOnCheckedChangeListener((v, c) -> this.updateSwitchHint(lightManager.getState()));
 
         onButton = findViewById(R.id.onbutton);
         onButton.setOnClickListener(v -> lightManager.on(getDelayMode()));
@@ -262,29 +268,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     synchronized void updateSwitchHint(LightManager.State state) {
-        final String message;
         int fadeTime = state.getFadeTime();
-        int timeLeft = state.getTimeLeft();
-        if (fadeTime == 0) {
-            switch (state.getLightState()) {
-                case CONSTANT:
-                    message = getString(R.string.instantly);
-                    break;
-                case FADING:
-                    message = String.format("fading %s", getFadeTimeString(timeLeft));;
-                    break;
-                case TIMER:
-                    message = String.format("time left %s", getFadeTimeString(timeLeft));;
-                    break;
-                case NOT_CONNECTED:
-                    message = getString(R.string.notconnected);
-                    break;
-                default:
-                    throw new RuntimeException();
-            }
-        } else {
-            message = String.format("%s %s", getFadeTimeString(fadeTime), getString(R.string.fade));
+        if (fadeTime == 0)
+            switchHint.setText(getString(R.string.instantly));
+        else {
+            LightManager.DelayMode delayMode = getDelayMode();
+            if (delayMode.equals(LightManager.DelayMode.FADE))
+                switchHint.setText(String.format("%s %s", getFadeTimeString(fadeTime), "fade"));
+            else
+                switchHint.setText(String.format("%s %s", getFadeTimeString(fadeTime), "timer"));
         }
-        switchHint.setText(message);
+    }
+
+    synchronized void updateStatusHint(LightManager.State state) {
+        final String message;
+        int timeLeft = state.getTimeLeft();
+        switch (state.getLightState()) {
+            case CONSTANT:
+                message = "";
+                break;
+            case FADING:
+                message = String.format("fading (%s)", getTimeLeftString(timeLeft));
+                break;
+            case TIMER:
+                message = String.format("timer (%s)", getTimeLeftString(timeLeft));
+                break;
+            case NOT_CONNECTED:
+                message = getString(R.string.notconnected);
+                break;
+            default:
+                throw new RuntimeException();
+        }
+        statusHint.setText(message);
     }
 }
