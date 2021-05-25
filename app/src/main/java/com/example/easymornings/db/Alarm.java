@@ -21,15 +21,15 @@ public class Alarm {
     public Integer offDelay;
     public String alarmSound;
 
-    @ColumnInfo(defaultValue = "true") public boolean enabled;
+    @ColumnInfo(defaultValue = "true") @Builder.Default public boolean enabled = true;
 
-    @ColumnInfo(defaultValue = "true") public boolean monday;
-    @ColumnInfo(defaultValue = "true") public boolean tuesday;
-    @ColumnInfo(defaultValue = "true") public boolean wednesday;
-    @ColumnInfo(defaultValue = "true") public boolean thursday;
-    @ColumnInfo(defaultValue = "true") public boolean friday;
-    @ColumnInfo(defaultValue = "true") public boolean saturday;
-    @ColumnInfo(defaultValue = "true") public boolean sunday;
+    @ColumnInfo(defaultValue = "true") @Builder.Default public boolean monday = true;
+    @ColumnInfo(defaultValue = "true") @Builder.Default public boolean tuesday = true;
+    @ColumnInfo(defaultValue = "true") @Builder.Default public boolean wednesday = true;
+    @ColumnInfo(defaultValue = "true") @Builder.Default public boolean thursday = true;
+    @ColumnInfo(defaultValue = "true") @Builder.Default public boolean friday = true;
+    @ColumnInfo(defaultValue = "true") @Builder.Default public boolean saturday = true;
+    @ColumnInfo(defaultValue = "true") @Builder.Default public boolean sunday = true;
 
     public boolean anyDayEnabled() {
         return monday || tuesday || wednesday || thursday || friday || saturday || sunday;

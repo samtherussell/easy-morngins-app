@@ -1,85 +1,117 @@
 package com.example.easymornings.light;
 
+import com.example.easymornings.light.LightConnector.LightStatus;
 import com.example.easymornings.light.LightConnector.LightState;
 
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-
-import lombok.Builder;
-import lombok.Value;
 
 public class LightManager {
 
+    final ScheduledExecutorService executorService;
+    final int MAX_STATUS_CHECK_DELAY = 2000;
+    final int MIN_STATUS_CHECK_DELAY = 100;
+    int statusCheckDelay = MIN_STATUS_CHECK_DELAY;
+    boolean checkLightStateFlag;
+
     final LightConnector lightConnector;
-    private LightState lightState;
-    private int fadeTime;
-    private double level;
-    private int timeLeft;
 
-    final ArrayList<Consumer<State>> fadeTimeSubscribers = new ArrayList<>();
-    final ArrayList<Consumer<State>> lightStateSubscribers = new ArrayList<>();
-    final ArrayList<Consumer<State>> lightLevelSubscribers = new ArrayList<>();
-    final ArrayList<Consumer<State>> timeLeftSubscribers = new ArrayList<>();
+    private int delayTime;
+    private DelayMode delayMode;
+    private LightStatus lightStatus;
+
+    final ArrayList<Consumer<Integer>> delayTimeSubscribers = new ArrayList<>();
+    final ArrayList<Consumer<DelayMode>> delayModeSubscribers = new ArrayList<>();
+    final ArrayList<Consumer<LightStatus>> lightStateSubscribers = new ArrayList<>();
+    final ArrayList<Consumer<LightStatus>> lightLevelSubscribers = new ArrayList<>();
+    final ArrayList<Consumer<LightStatus>> timeLeftSubscribers = new ArrayList<>();
     final ArrayList<Runnable> actionFailedSubscribers = new ArrayList<>();
-
-    @Value @Builder
-    public static class State {
-        LightState lightState;
-        int fadeTime;
-        double level;
-        int timeLeft;
-    }
 
     public enum DelayMode {FADE, TIMER};
 
     public LightManager(LightConnector lightConnector) {
+        this.executorService = Executors.newSingleThreadScheduledExecutor();
         this.lightConnector = lightConnector;
-        this.fadeTime = 0;
-        this.lightState = LightState.UNDEFINED;
-        this.level = 0;
+        this.delayTime = 0;
+        this.delayMode = DelayMode.TIMER;
+        startCheckLightState();
     }
 
-    public void addFadeTime(int amount) {
-        fadeTime += amount;
-        State state = getState();
-        fadeTimeSubscribers.forEach(sub -> sub.accept(state));
+    public void addDelayTime(int amount) {
+        delayTime += amount;
+        delayTimeSubscribers.forEach(sub -> sub.accept(delayTime));
+    }
+
+    public void cancelDelayTime() {
+        delayTime = 0;
+        delayTimeSubscribers.forEach(sub -> sub.accept(delayTime));
+    }
+
+    public void setDelayMode(DelayMode val) {
+        delayMode = val;
+        delayModeSubscribers.forEach(sub -> sub.accept(delayMode));
+    }
+
+    public void startCheckLightState() {
+        checkLightStateFlag = true;
+        checkLightState();
+    }
+
+    public void stopCheckLightState() {
+        checkLightStateFlag = false;
     }
 
     public CompletableFuture<Boolean> checkLightState() {
         return lightConnector.getLightStatus().thenApply(status -> {
-            boolean diffLightState = lightState != status.getLightState();
-            boolean diffLightLevel = level != status.getLightLevel();
-            boolean diffTimeLeft = timeLeft != status.getTimeLeft();
-            level = status.getLightLevel();
-            lightState = status.getLightState();
-            timeLeft = status.getTimeLeft();
-            State state = getState();
+            boolean diffLightState = this.lightStatus == null || this.lightStatus.getLightState() != status.getLightState();
+            boolean diffLightLevel = this.lightStatus == null || this.lightStatus.getLightLevel() != status.getLightLevel();
+            boolean diffTimeLeft = this.lightStatus == null || this.lightStatus.getTimeLeft() != status.getTimeLeft();
+            this.lightStatus = status;
             if (diffLightState)
-                lightStateSubscribers.forEach(sub -> sub.accept(state));
+                lightStateSubscribers.forEach(sub -> sub.accept(status));
             if (diffLightLevel)
-                lightLevelSubscribers.forEach(sub -> sub.accept(state));
+                lightLevelSubscribers.forEach(sub -> sub.accept(status));
             if (diffTimeLeft)
-                timeLeftSubscribers.forEach(sub -> sub.accept(state));
-            return diffLightState || diffLightLevel;
+                timeLeftSubscribers.forEach(sub -> sub.accept(status));
+
+            boolean changed = diffLightState || diffLightLevel || diffTimeLeft;
+            scheduleNextRun(changed);
+
+            return changed;
         });
     }
 
-    public CompletableFuture<Boolean> on(DelayMode delayMode) {
-        return setLevel(delayMode, 1);
+    private void scheduleNextRun(boolean changed) {
+        if (!checkLightStateFlag)
+            return;
+
+        if (changed)
+            statusCheckDelay = MIN_STATUS_CHECK_DELAY;
+        else
+            statusCheckDelay = Math.min(statusCheckDelay * 2, MAX_STATUS_CHECK_DELAY);
+
+        executorService.schedule(this::checkLightState, statusCheckDelay, TimeUnit.SECONDS);
     }
 
-    public CompletableFuture<Boolean> off(DelayMode delayMode) {
-        return setLevel(delayMode, 0);
+    public CompletableFuture<Boolean> on() {
+        return setLevel(1);
     }
 
-    public CompletableFuture<Boolean> setLevel(DelayMode delayMode, float level) {
-        if (fadeTime == 0)
+    public CompletableFuture<Boolean> off() {
+        return setLevel(0);
+    }
+
+    public CompletableFuture<Boolean> setLevel(float level) {
+        if (delayTime == 0)
             return setNow(level);
         else if (delayMode == DelayMode.FADE)
-            return fade(level, fadeTime);
+            return fade(level, delayTime);
         else if (delayMode == DelayMode.TIMER)
-            return timer(level, fadeTime);
+            return timer(level, delayTime);
         else
             throw new RuntimeException();
     }
@@ -87,13 +119,11 @@ public class LightManager {
     CompletableFuture<Boolean> setNow(float level) {
         return lightConnector.setNow(level).thenApply((success) -> {
             if (success) {
-                this.fadeTime = 0;
-                this.lightState = LightState.CONSTANT;
-                this.level = level;
-                State state = getState();
-                fadeTimeSubscribers.forEach(sub -> sub.accept(state));
-                lightStateSubscribers.forEach(sub -> sub.accept(state));
-                lightLevelSubscribers.forEach(sub -> sub.accept(state));
+                cancelDelayTime();
+                this.lightStatus = new LightStatus(LightState.CONSTANT, level, -1);
+                lightStateSubscribers.forEach(sub -> sub.accept(this.lightStatus));
+                lightLevelSubscribers.forEach(sub -> sub.accept(this.lightStatus));
+                timeLeftSubscribers.forEach(sub -> sub.accept(this.lightStatus));
             } else
                 actionFailedSubscribers.forEach(Runnable::run);
             return success;
@@ -103,12 +133,10 @@ public class LightManager {
     CompletableFuture<Boolean> fade(float level, int period) {
         return lightConnector.fade(level, period).thenApply((success) -> {
             if (success) {
-                this.fadeTime = 0;
-                this.lightState = LightState.FADING;
-                this.timeLeft = period;
-                State state = getState();
-                fadeTimeSubscribers.forEach(sub -> sub.accept(state));
-                lightStateSubscribers.forEach(sub -> sub.accept(state));
+                cancelDelayTime();
+                this.lightStatus = new LightStatus(LightState.FADING, level, period);
+                lightStateSubscribers.forEach(sub -> sub.accept(this.lightStatus));
+                timeLeftSubscribers.forEach(sub -> sub.accept(this.lightStatus));
             } else
                 actionFailedSubscribers.forEach(Runnable::run);
             return success;
@@ -118,41 +146,33 @@ public class LightManager {
     CompletableFuture<Boolean> timer(float level, int period) {
         return lightConnector.timer(level, period).thenApply((success) -> {
             if (success) {
-                this.fadeTime = 0;
-                this.lightState = LightState.FADING;
-                this.timeLeft = period;
-                State state = getState();
-                fadeTimeSubscribers.forEach(sub -> sub.accept(state));
-                lightStateSubscribers.forEach(sub -> sub.accept(state));
+                cancelDelayTime();
+                this.lightStatus = new LightStatus(LightState.TIMER, level, period);
+                timeLeftSubscribers.forEach(sub -> sub.accept(this.lightStatus));
             } else
                 actionFailedSubscribers.forEach(Runnable::run);
             return success;
         });
     }
 
-    public State getState() {
-        return State.builder()
-                .fadeTime(fadeTime)
-                .lightState(lightState)
-                .level(level)
-                .timeLeft(timeLeft)
-                .build();
+    public void addDelayTimeSubscriber(Consumer<Integer> subscriber) {
+        delayTimeSubscribers.add(subscriber);
     }
 
-    public void addFadeTimeSubscriber(Consumer<State> subscriber) {
-        fadeTimeSubscribers.add(subscriber);
-    }
-
-    public void addLightStateSubscriber(Consumer<State> subscriber) {
+    public void addLightStateSubscriber(Consumer<LightStatus> subscriber) {
         lightStateSubscribers.add(subscriber);
     }
 
-    public void addLightLevelSubscriber(Consumer<State> subscriber) {
+    public void addLightLevelSubscriber(Consumer<LightStatus> subscriber) {
         lightLevelSubscribers.add(subscriber);
     }
 
-    public void addTimeLeftSubscribers(Consumer<State> subscriber) {
+    public void addTimeLeftSubscribers(Consumer<LightStatus> subscriber) {
         timeLeftSubscribers.add(subscriber);
+    }
+
+    public void addDelayModeSubscribers(Consumer<DelayMode> subscriber) {
+        delayModeSubscribers.add(subscriber);
     }
 
     public void addActionFailedSubscriber(Runnable subscriber) {

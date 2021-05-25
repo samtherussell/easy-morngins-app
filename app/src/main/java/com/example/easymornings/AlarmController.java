@@ -1,6 +1,7 @@
 package com.example.easymornings;
 
 import android.content.Context;
+import android.graphics.Path;
 
 import com.example.easymornings.db.Alarm;
 import com.example.easymornings.db.AlarmRepository;
@@ -39,6 +40,8 @@ public class AlarmController {
         saveAlarmUpdates(alarm);
         alarmScheduler.scheduleNextFadeIn(alarm);
         alarmScheduler.scheduleNextOff(alarm);
+        if (alarm.alarmSound == null)
+            return Optional.empty();
         return alarmScheduler.scheduleNextAlarm(alarm);
     }
 
@@ -51,11 +54,15 @@ public class AlarmController {
         saveAlarmUpdates(alarm);
         alarmScheduler.scheduleNextFadeIn(alarm);
         alarmScheduler.scheduleNextOff(alarm);
+        if (alarm.alarmSound == null)
+            return Optional.empty();
         return alarmScheduler.scheduleNextAlarm(alarm);
     }
 
     public void onChangeAlarmSound(Alarm alarm) {
         saveAlarmUpdates(alarm);
+        if (alarm.alarmSound != null && !alarmScheduler.isAlarmScheduled(alarm))
+            alarmScheduler.scheduleNextAlarm(alarm);
     }
 
     CompletableFuture<Alarm> getAlarm(int id) {

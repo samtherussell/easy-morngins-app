@@ -3,11 +3,6 @@ package com.example.easymornings;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.media.AudioAttributes;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,7 +10,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.SeekBar;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,93 +17,73 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.easymornings.light.LightConnector;
 import com.example.easymornings.light.LightConnector.LightState;
-import com.example.easymornings.db.Alarm;
-import com.example.easymornings.db.AlarmRepository;
+import com.example.easymornings.light.LightConnector.LightStatus;
 import com.example.easymornings.light.LightManager;
-import com.example.easymornings.preference.AppPreferenceValues;
-import com.example.easymornings.preference.PreferencesConnector;
-import com.example.easymornings.preference.SharedPreferencesConnector;
 
-import static com.example.easymornings.AlarmScheduler.COMMAND_EXTRA;
-import static com.example.easymornings.AlarmScheduler.SLEEP_SOUND_COMMAND;
-import static com.example.easymornings.AlarmScheduler.SOUND_START_COMMAND;
-import static com.example.easymornings.AlarmScheduler.UID_EXTRA;
-import static com.example.easymornings.TimeUtils.getFadeTimeString;
+import static com.example.easymornings.TimeUtils.getDelayTimeString;
 import static com.example.easymornings.TimeUtils.getTimeLeftString;
 
 public class MainActivity extends AppCompatActivity {
 
     Handler uiHandler;
     LightManager lightManager;
-    TextView switchHint, statusHint;
+    TextView delayHint, statusHint;
     SeekBar dimmerBar;
     ImageView onButton, offButton;
-    Button plus15sec, plus1min, plus5min, dismiss, sleep;
-    Switch fadeTimerSwitch;
-    MediaPlayer mediaPlayer;
-    final int MAX_STATUS_CHECK_DELAY = 2000;
-    final int MIN_STATUS_CHECK_DELAY = 100;
-    int statusCheckDelay = MIN_STATUS_CHECK_DELAY;
+    View delayButtons;
+    Button plus15secButton, plus1minButton, plus5minButton;
+    Button cancelButton, fadeModeButton, timerModeButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setTurnScreenOn(true);
-        setShowWhenLocked(true);
-        KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-        keyguardManager.requestDismissKeyguard(this, null);
-        setShowWhenLocked(true);
+        setupWakeUp();
         setContentView(R.layout.activity_main);
 
         findViewById(R.id.settings).setOnClickListener((v) -> startActivity(new Intent(this, SettingsActivity.class)));
         findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarmActivity.class)));
 
-        switchHint = findViewById(R.id.switchhint);
-        statusHint = findViewById(R.id.statushint);
+        lightManager = new LightManager(LightConnector.Create(this));
 
+        setupLightUI();
+        setupDelayUI();
+        setupSubscribers();
+    }
+
+    private void setupWakeUp() {
+        setShowWhenLocked(true);
+    }
+
+    private void setupSubscribers() {
         uiHandler = new Handler(Looper.myLooper());
+        lightManager.addLightStateSubscriber(this::updateStatusHintUiHandler);
+        lightManager.addLightStateSubscriber(this::updateDelayButtonsUiHandler);
+        lightManager.addLightLevelSubscriber(this::updateSliderUiHandler);
+        lightManager.addDelayTimeSubscriber(this::updateDelayHintUiHandler);
+        lightManager.addTimeLeftSubscribers(this::updateStatusHintUiHandler);
+        lightManager.addActionFailedSubscriber(this::notifyActionFailedUiHandler);
+    }
 
-        SharedPreferences sharedPreferences = getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
-        PreferencesConnector preferencesConnector = new SharedPreferencesConnector(sharedPreferences);
-
-        LightConnector lightConnector = new LightConnector(() ->
-                preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
-
-        lightManager = new LightManager(lightConnector);
-
-        lightManager.addFadeTimeSubscriber((s) -> uiHandler.post(() -> this.updateSwitchHint(s)));
-        lightManager.addTimeLeftSubscribers((s) -> uiHandler.post(() -> this.updateStatusHint(s)));
-
-        lightManager.addLightStateSubscriber((s) -> uiHandler.post(() -> {
-            this.updateSwitchHint(s);
-            this.updateTimeButtons(s);
-            this.updateOnOffButtons(s);
-            this.updateStatusHint(s);
-        }));
-
-        lightManager.addLightLevelSubscriber((s) -> uiHandler.post(() -> {
-            this.updateSlider(s);
-            this.updateStatusHint(s);
-        }));
-
-        lightManager.addActionFailedSubscriber(() -> uiHandler.post(this::notifyActionFailed));
-
-        fadeTimerSwitch = findViewById(R.id.fade_timer_switch);
-        fadeTimerSwitch.setOnCheckedChangeListener((v, c) -> this.updateSwitchHint(lightManager.getState()));
+    private void setupLightUI() {
+        statusHint = findViewById(R.id.statushint);
+        statusHint.setText("trying to connect...");
 
         onButton = findViewById(R.id.onbutton);
-        onButton.setOnClickListener(v -> lightManager.on(getDelayMode()));
+        onButton.setVisibility(View.INVISIBLE);
+        onButton.setOnClickListener(v -> lightManager.on());
 
         offButton = findViewById(R.id.offbutton);
-        offButton.setOnClickListener(v -> lightManager.off(getDelayMode()));
+        offButton.setVisibility(View.INVISIBLE);
+        offButton.setOnClickListener(v -> lightManager.off());
 
         dimmerBar = findViewById(R.id.seekBar);
+        dimmerBar.setVisibility(View.INVISIBLE);
         dimmerBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
                     float level = ((float) progress) / seekBar.getMax();
-                    lightManager.setLevel(getDelayMode(), level);
+                    lightManager.setLevel(level);
                 }
             }
 
@@ -120,167 +94,98 @@ public class MainActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
-        plus15sec = findViewById(R.id.plus15sec);
-        plus15sec.setOnClickListener(v -> lightManager.addFadeTime(15));
-
-        plus1min = findViewById(R.id.plus1min);
-        plus1min.setOnClickListener(v -> lightManager.addFadeTime(60));
-
-        plus5min = findViewById(R.id.plus5min);
-        plus5min.setOnClickListener(v -> lightManager.addFadeTime(5*60));
-
-        dismiss = findViewById(R.id.dismiss);
-        dismiss.setVisibility(View.GONE);
-
-        sleep = findViewById(R.id.sleep);
-        sleep.setVisibility(View.GONE);
-
-        Bundle extras = getIntent().getExtras();
-        if (extras != null) {
-            handleAlarm(extras);
-        }
     }
 
-    private LightManager.DelayMode getDelayMode() {
-        if (fadeTimerSwitch.isChecked())
-            return LightManager.DelayMode.TIMER;
-        else
-            return LightManager.DelayMode.FADE;
+    private void setupDelayUI() {
+        delayHint = findViewById(R.id.delayhint);
+        delayButtons = findViewById(R.id.delay_buttons);
+
+        plus15secButton = findViewById(R.id.plus15sec);
+        plus15secButton.setOnClickListener(v -> lightManager.addDelayTime(15));
+
+        plus1minButton = findViewById(R.id.plus1min);
+        plus1minButton.setOnClickListener(v -> lightManager.addDelayTime(60));
+
+        plus5minButton = findViewById(R.id.plus5min);
+        plus5minButton.setOnClickListener(v -> lightManager.addDelayTime(5*60));
+
+        cancelButton = findViewById(R.id.cancel_button);
+        cancelButton.setOnClickListener(v -> lightManager.cancelDelayTime());
+
+        fadeModeButton = findViewById(R.id.fadebutton);
+        fadeModeButton.setOnClickListener(v -> lightManager.setDelayMode(LightManager.DelayMode.FADE));
+
+        timerModeButton = findViewById(R.id.timerbuton);
+        timerModeButton.setOnClickListener(v -> lightManager.setDelayMode(LightManager.DelayMode.TIMER));
+
+        setDelayButtonVisibility(false);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        uiHandler.post(this::checkLightState);
+        lightManager.startCheckLightState();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        uiHandler.removeCallbacksAndMessages(null);
+        lightManager.stopCheckLightState();
     }
 
-    public void checkLightState() {
-        lightManager.checkLightState().thenAccept(changed -> {
-            if (changed)
-                statusCheckDelay = MIN_STATUS_CHECK_DELAY;
-            else
-                statusCheckDelay = Math.min(statusCheckDelay * 2, MAX_STATUS_CHECK_DELAY);
-            uiHandler.postDelayed(this::checkLightState, statusCheckDelay);
-        });
+    void updateDelayHintUiHandler(int delayTime) {
+        uiHandler.post(() -> this.updateDelayHint(delayTime));
     }
-
-    private void handleAlarm(Bundle extras) {
-        if (!extras.containsKey(COMMAND_EXTRA) || !extras.containsKey(UID_EXTRA)) {
-            NotificationUtils.displayProblemNotification(getApplicationContext(), "Could not play alarm", NotificationUtils.ALARM_SOUND_RECEIVER_PROBLEM);
-        }
-        int command = extras.getInt(COMMAND_EXTRA);
-        if (command == SLEEP_SOUND_COMMAND || command == SOUND_START_COMMAND) {
-            AlarmScheduler alarmScheduler = AlarmScheduler.create(getApplicationContext());
-            int uid = extras.getInt(UID_EXTRA);
-            AlarmRepository alarmRepository = AlarmRepository.create(getApplicationContext());
-            alarmRepository.getAlarm(uid).thenAccept(alarm -> {
-                if (command == SOUND_START_COMMAND)
-                    alarmScheduler.scheduleNextAlarm(alarm);
-
-                uiHandler.post(() -> {
-                    soundAlarm(alarm.alarmSound);
-
-                    dismiss.setVisibility(View.VISIBLE);
-                    dismiss.setOnClickListener(v -> dismissAlarm(alarmScheduler, alarm));
-
-                    sleep.setVisibility(View.VISIBLE);
-                    sleep.setOnClickListener(v -> onSleepClick(alarmScheduler, alarm));
-                });
-            });
-        }
+    void updateStatusHintUiHandler(LightStatus state) {
+        uiHandler.post(() -> this.updateStatusHint(state));
     }
-
-    void soundAlarm(String alarmSound) {
-        if (mediaPlayer == null || !mediaPlayer.isPlaying()) {
-            AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build();
-
-            if (alarmSound != null) {
-                mediaPlayer = MediaPlayer.create(this, Uri.parse(alarmSound), null, audioAttributes, audioManager.generateAudioSessionId());
-            }
-
-            if (mediaPlayer == null) {
-                mediaPlayer = MediaPlayer.create(this, R.raw.alarm, audioAttributes, audioManager.generateAudioSessionId());
-            }
-
-            mediaPlayer.start();
-            mediaPlayer.setLooping(true);
-        }
+    void updateDelayButtonsUiHandler(LightStatus state) {
+        uiHandler.post(() -> this.updateDelayButtons(state));
     }
-
-    @Override
-    public void onBackPressed() {
-        if (mediaPlayer == null || !mediaPlayer.isPlaying()) {
-            super.onBackPressed();
-        }
+    void updateSliderUiHandler(LightStatus state) {
+        uiHandler.post(() -> this.updateSlider(state));
     }
-
-    private void dismissAlarm(AlarmScheduler alarmScheduler, Alarm alarm) {
-        if (mediaPlayer != null && mediaPlayer.isPlaying())
-            mediaPlayer.stop();
-        dismiss.setVisibility(View.GONE);
-        sleep.setVisibility(View.GONE);
-        alarmScheduler.cancelSleepAlarm(alarm);
-    }
-
-    private void onSleepClick(AlarmScheduler alarmScheduler, Alarm alarm) {
-        mediaPlayer.stop();
-        sleep.setVisibility(View.GONE);
-        int delay = alarmScheduler.scheduleSleepAlarm(alarm);
-        String msg = String.format("Alarm will sound in %s", TimeUtils.getTimeIntervalString(delay));
-        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+    void notifyActionFailedUiHandler() {
+        uiHandler.post(this::notifyActionFailed);
     }
 
     void notifyActionFailed() {
         Toast.makeText(getApplicationContext(), getString(R.string.action_failed), Toast.LENGTH_LONG).show();
     }
 
-    synchronized private void updateTimeButtons(LightManager.State state) {
-        boolean enabled = state.getLightState() != LightState.NOT_CONNECTED;
-        int visibility = enabled ? View.VISIBLE : View.INVISIBLE;
-        plus15sec.setVisibility(visibility);
-        plus1min.setVisibility(visibility);
-        plus5min.setVisibility(visibility);
+    private void updateDelayButtons(LightStatus state) {
+        boolean visible = state.getLightState() != LightState.NOT_CONNECTED;
+        setDelayButtonVisibility(visible);
     }
 
-    synchronized private void updateSlider(LightManager.State state) {
-        boolean enabled = state.getLightState() != LightState.NOT_CONNECTED;
-        int visibility = enabled ? View.VISIBLE : View.INVISIBLE;
+    synchronized private void setDelayButtonVisibility(boolean visible) {
+        int visibility = visible ? View.VISIBLE : View.INVISIBLE;
+        plus15secButton.setVisibility(visibility);
+        plus1minButton.setVisibility(visibility);
+        plus5minButton.setVisibility(visibility);
+        cancelButton.setVisibility(visibility);
+        fadeModeButton.setVisibility(visibility);
+        timerModeButton.setVisibility(visibility);
+    }
+
+    synchronized private void updateSlider(LightStatus state) {
+        boolean visible = state.getLightState() != LightState.NOT_CONNECTED;
+        int visibility = visible ? View.VISIBLE : View.INVISIBLE;
         dimmerBar.setVisibility(visibility);
-
-        dimmerBar.setProgress((int) (dimmerBar.getMax() * state.getLevel()), false);
-    }
-
-    private void updateOnOffButtons(LightManager.State state) {
-        boolean enabled = state.getLightState() != LightState.NOT_CONNECTED;
-        int visibility = enabled ? View.VISIBLE : View.INVISIBLE;
         onButton.setVisibility(visibility);
         offButton.setVisibility(visibility);
+        if (visible)
+            dimmerBar.setProgress((int) (dimmerBar.getMax() * state.getLightLevel()), false);
     }
 
-    synchronized void updateSwitchHint(LightManager.State state) {
-        int fadeTime = state.getFadeTime();
-        if (fadeTime == 0)
-            switchHint.setText(getString(R.string.instantly));
-        else {
-            LightManager.DelayMode delayMode = getDelayMode();
-            if (delayMode.equals(LightManager.DelayMode.FADE))
-                switchHint.setText(String.format("%s %s", getFadeTimeString(fadeTime), "fade"));
-            else
-                switchHint.setText(String.format("%s %s", getFadeTimeString(fadeTime), "timer"));
-        }
+    synchronized void updateDelayHint(int delayTime) {
+        if (delayTime == -1)
+            delayHint.setText("");
+        else
+            delayHint.setText(getDelayTimeString(delayTime));
     }
 
-    synchronized void updateStatusHint(LightManager.State state) {
+    synchronized void updateStatusHint(LightStatus state) {
         final String message;
         int timeLeft = state.getTimeLeft();
         switch (state.getLightState()) {

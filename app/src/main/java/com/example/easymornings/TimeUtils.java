@@ -54,7 +54,9 @@ class TimeUtils {
         return String.join(", ", strings);
     }
 
-    static String getFadeTimeString(int seconds) {
+    static String getDelayTimeString(int seconds) {
+        if (seconds == 0)
+            return "instantly";
         int minutes = seconds / 60;
         seconds = seconds % 60;
         if (minutes > 0 && seconds > 0)
@@ -62,7 +64,7 @@ class TimeUtils {
         else if (minutes > 0)
             return String.format("%d min", minutes);
         else
-            return "seconds";
+            return String.format("%d sec", seconds);
     }
 
     static String getTimeLeftString(int seconds) {

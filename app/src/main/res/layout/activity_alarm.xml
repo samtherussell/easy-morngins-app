@@ -8,60 +8,31 @@
     tools:context=".MainActivity">
 
     <GridLayout
-        android:id="@+id/delay_buttons"
+        android:id="@+id/alarm_buttons"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:columnCount="3"
-        android:orientation="horizontal"
+        android:layout_height="100sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         android:useDefaultMargins="true"
-        android:layout_gravity="center"
-        android:gravity="center"
         >
 
         <Button
-            android:id="@+id/plus15sec"
-            android:layout_height="60sp"
-            android:text="@string/plus15sec"
-            android:textSize="20sp"
-            />
-
-        <Button
-            android:id="@+id/plus1min"
-            android:layout_height="60sp"
-            android:text="@string/plus1min"
-            android:textSize="20sp"
-            />
-
-        <Button
-            android:id="@+id/plus5min"
-            android:layout_height="60sp"
-            android:text="@string/plus5min"
-            android:textSize="20sp"
-            />
-
-        <Button
-            android:id="@+id/cancel_button"
-            android:text="cancel"
-            android:textSize="20sp"
-            />
-
-        <Button
-            android:id="@+id/fadebutton"
-            android:text="fade"
-            android:textSize="20sp"
+            android:id="@+id/dismiss"
+            android:text="dismiss"
+            android:textSize="30sp"
             android:layout_gravity="fill"
             />
 
         <Button
-            android:id="@+id/timerbuton"
-            android:text="timer"
-            android:textSize="20sp"
+            android:id="@+id/sleep"
+            android:text="sleep"
+            android:textSize="30sp"
             android:layout_gravity="fill"
             />
-
+        
     </GridLayout>
+
+
 
     <ImageView
         android:id="@+id/alarmclockimage"
@@ -120,37 +91,5 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintLeft_toRightOf="@+id/seekBar"
         app:srcCompat="@drawable/ic_switchbuttonon" />
-
-    <TextView
-        android:id="@+id/delayhint"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="25sp"
-        android:textColor="#AAAAAA"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/seekBar" />
-
-    <TextView
-        android:id="@+id/statushint"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="15sp"
-        android:textColor="#AAAAAA"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/seekBar"
-        android:layout_marginBottom="5sp"/>
-
-    <ImageView
-        android:id="@+id/settings"
-        android:layout_width="30sp"
-        android:layout_height="30sp"
-        app:srcCompat="@android:drawable/ic_menu_preferences"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginRight="10sp"
-        android:layout_marginTop="10sp"
-        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

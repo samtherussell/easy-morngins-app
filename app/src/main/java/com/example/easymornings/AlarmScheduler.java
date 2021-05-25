@@ -4,6 +4,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 import com.example.easymornings.alarmreceiver.FadeOnReceiver;
 import com.example.easymornings.alarmreceiver.TurnOffReceiver;
@@ -56,8 +57,8 @@ public class AlarmScheduler {
             cancelBroadcastAlarm(new Intent(context, TurnOffReceiver.class), getTurnOffRequestCode(alarm.uid));
         }
         if (alarm.alarmTime != null) {
-            cancelActivityAlarm(new Intent(context, MainActivity.class), getAlarmSoundRequestCode(alarm.uid));
-            cancelActivityAlarm(new Intent(context, MainActivity.class), getSleepRequestCode(alarm.uid));
+            cancelActivityAlarm(new Intent(context, AlarmActivity.class), getAlarmSoundRequestCode(alarm.uid));
+            cancelSleepAlarm(alarm);
         }
     }
 
@@ -73,6 +74,21 @@ public class AlarmScheduler {
             alarmManager.cancel(pendingIntent);
     }
 
+    boolean isFadeOnScheduled(Alarm alarm) {
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, getFadeOnRequestCode(alarm.uid), new Intent(context, FadeOnReceiver.class), PendingIntent.FLAG_NO_CREATE);
+        return pendingIntent != null;
+    }
+
+    boolean isTurnOffScheduled(Alarm alarm) {
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, getTurnOffRequestCode(alarm.uid), new Intent(context, TurnOffReceiver.class), PendingIntent.FLAG_NO_CREATE);
+        return pendingIntent != null;
+    }
+
+    boolean isAlarmScheduled(Alarm alarm) {
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, getAlarmSoundRequestCode(alarm.uid), new Intent(context, AlarmActivity.class), PendingIntent.FLAG_NO_CREATE);
+        return pendingIntent != null;
+    }
+
     public Optional<Integer> scheduleNextFadeIn(Alarm alarm) {
         Intent intent = new Intent(context, FadeOnReceiver.class);
         intent.putExtra(UID_EXTRA, alarm.uid);
@@ -80,24 +96,34 @@ public class AlarmScheduler {
         if (alarm.fadeOnDelay != null && alarm.alarmTime != null && alarm.enabled && alarm.anyDayEnabled()) {
             int onTime = alarm.alarmTime - alarm.fadeOnDelay;
             Long nextAlarmMillis = getNextAlarmMillis(onTime, alarm::isDayEnabled);
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
+            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextFadeIn - set");
+            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
+            Log.println(Log.DEBUG, "AlarmScheduler", Long.toString(nextAlarmMillis));
+            alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(nextAlarmMillis, null), pendingIntent);
             return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
+            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextFadeIn - remove");
+            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
         }
     }
 
     public Optional<Integer> scheduleNextAlarm(Alarm alarm) {
-        Intent intent = new Intent(context, MainActivity.class);
+        Intent intent = new Intent(context, AlarmActivity.class);
         intent.putExtra(COMMAND_EXTRA, SOUND_START_COMMAND);
         intent.putExtra("uid", alarm.uid);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, getAlarmSoundRequestCode(alarm.uid), intent, PendingIntent.FLAG_UPDATE_CURRENT);
         if (alarm.enabled && alarm.alarmTime != null && alarm.anyDayEnabled()) {
             Long nextAlarmMillis = getNextAlarmMillis(alarm.alarmTime, alarm::isDayEnabled);
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
+            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextAlarm");
+            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
+            Log.println(Log.DEBUG, "AlarmScheduler", Long.toString(nextAlarmMillis));
+            alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(nextAlarmMillis, null), pendingIntent);
             return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
+            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextAlarm - remove");
+            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
         }
@@ -110,9 +136,14 @@ public class AlarmScheduler {
         if (alarm.offDelay != null && alarm.alarmTime != null && alarm.enabled && alarm.anyDayEnabled()) {
             int offTime = alarm.alarmTime + alarm.offDelay;
             Long nextAlarmMillis = getNextAlarmMillis(offTime, alarm::isDayEnabled);
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextAlarmMillis, pendingIntent);
+            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextOff");
+            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
+            Log.println(Log.DEBUG, "AlarmScheduler", Long.toString(nextAlarmMillis));
+            alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(nextAlarmMillis, null), pendingIntent);
             return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
+            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextOff - remove");
+            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
         }
@@ -140,16 +171,16 @@ public class AlarmScheduler {
     }
 
     int scheduleSleepAlarm(Alarm alarm) {
-        Intent intent = new Intent(context, MainActivity.class);
+        Intent intent = new Intent(context, AlarmActivity.class);
         intent.putExtra(COMMAND_EXTRA, SLEEP_SOUND_COMMAND);
         intent.putExtra("uid", alarm.uid);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, getSleepRequestCode(alarm.uid), intent, PendingIntent.FLAG_UPDATE_CURRENT);
         long triggerAtMillis = System.currentTimeMillis() + ALARM_SLEEP_DELAY * 1000;
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+        alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(triggerAtMillis, null), pendingIntent);
         return TimeUtils.getSecondsUntil(triggerAtMillis);
     }
 
     void cancelSleepAlarm(Alarm alarm) {
-        cancelActivityAlarm(new Intent(context, MainActivity.class), getSleepRequestCode(alarm.uid));
+        cancelActivityAlarm(new Intent(context, AlarmActivity.class), getSleepRequestCode(alarm.uid));
     }
 }

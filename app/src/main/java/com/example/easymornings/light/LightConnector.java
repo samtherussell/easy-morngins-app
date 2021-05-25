@@ -1,6 +1,12 @@
 package com.example.easymornings.light;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
+
+import com.example.easymornings.preference.AppPreferenceValues;
+import com.example.easymornings.preference.PreferencesConnector;
+import com.example.easymornings.preference.SharedPreferencesConnector;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,13 +36,18 @@ import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
-
 public class LightConnector {
 
     final Executor executor;
     final Supplier<String> getIP;
     final static int PORT = 8080;
     RateLimiter<CompletableFuture<Boolean>> rateLimiter = new RateLimiter<>(50, CompletableFuture.completedFuture(true));
+
+    public static LightConnector Create(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
+        PreferencesConnector preferencesConnector = new SharedPreferencesConnector(sharedPreferences);
+        return new LightConnector(() -> preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
+    }
 
     public LightConnector(Supplier<String> getIP) {
         executor = Executors.newSingleThreadExecutor();
@@ -72,13 +83,17 @@ public class LightConnector {
     public CompletableFuture<LightStatus> getLightStatus() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String response = get(statusURI());
+                URI uri = statusURI();
+                Log.println(Log.DEBUG, "request", uri.toASCIIString());
+                String response = get(uri);
+                Log.println(Log.DEBUG, "response", response);
                 JSONObject json = new JSONObject(response);
                 LightState state = parseLightState(json.getString("state"));
                 double level = json.getDouble("level");
                 int timeLeft = (int) json.getDouble("time_left");
                 return LightStatus.builder().lightState(state).lightLevel(level).timeLeft(timeLeft).build();
             } catch (Exception e) {
+                Log.println(Log.DEBUG, "exception", e.toString());
                 return LightStatus.NotConnected();
             }
         }, executor);
