@@ -42,6 +42,7 @@ public class LightConnector {
     final Supplier<String> getIP;
     final static int PORT = 8080;
     RateLimiter<CompletableFuture<Boolean>> rateLimiter = new RateLimiter<>(50, CompletableFuture.completedFuture(true));
+    Retryer retryer = new Retryer();
 
     public static LightConnector Create(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
@@ -100,21 +101,21 @@ public class LightConnector {
     }
 
     public CompletableFuture<Boolean> setNow(float level) {
-        return rateLimiter.limit(() ->
+        return retryer.retry(() -> rateLimiter.limit(() ->
                 CompletableFuture.supplyAsync(() -> postAndCheck(setNowURI(level)), executor)
-        );
+        ));
     }
 
     public CompletableFuture<Boolean> fade(float level, int period) {
-        return rateLimiter.limit(() ->
+        return retryer.retry(() -> rateLimiter.limit(() ->
                 CompletableFuture.supplyAsync(() -> postAndCheck(fadeURI(level, period)), executor)
-        );
+        ));
     }
 
     public CompletableFuture<Boolean> timer(float level, int period) {
-        return rateLimiter.limit(() ->
+        return retryer.retry(() -> rateLimiter.limit(() ->
                 CompletableFuture.supplyAsync(() -> postAndCheck(timerURI(level, period)), executor)
-        );
+        ));
     }
 
     boolean postAndCheck(URI path) {
@@ -221,6 +222,29 @@ public class LightConnector {
                 return supplier.get();
             } else
                 return defaultValue;
+        }
+    }
+
+    static class Retryer {
+        private static final int RETIRES = 5;
+        CompletableFuture<Boolean> retry(Supplier<CompletableFuture<Boolean>> supplier) {
+            return supplier.get().thenCompose(success -> {
+                if (success)
+                    return CompletableFuture.completedFuture(success);
+                else
+                    return retry(supplier, RETIRES - 1);
+            });
+        }
+
+        CompletableFuture<Boolean> retry(Supplier<CompletableFuture<Boolean>> supplier, int n) {
+            return supplier.get().thenCompose(success -> {
+                if (success)
+                    return CompletableFuture.completedFuture(success);
+                else if (n > 1)
+                    return retry(supplier, n - 1);
+                else
+                    return CompletableFuture.completedFuture(false);
+            });
         }
     }
 
