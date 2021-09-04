@@ -25,7 +25,6 @@ public class LightManager {
     private LightStatus lightStatus;
 
     final ArrayList<Consumer<Integer>> delayTimeSubscribers = new ArrayList<>();
-    final ArrayList<Consumer<DelayMode>> delayModeSubscribers = new ArrayList<>();
     final ArrayList<Consumer<LightStatus>> lightStateSubscribers = new ArrayList<>();
     final ArrayList<Consumer<LightStatus>> lightLevelSubscribers = new ArrayList<>();
     final ArrayList<Consumer<LightStatus>> timeLeftSubscribers = new ArrayList<>();
@@ -38,12 +37,15 @@ public class LightManager {
         this.lightConnector = lightConnector;
         this.delayTime = 0;
         this.delayMode = DelayMode.TIMER;
-        startCheckLightState();
     }
 
     public void addDelayTime(int amount) {
         delayTime += amount;
         delayTimeSubscribers.forEach(sub -> sub.accept(delayTime));
+    }
+
+    public boolean hasDelayTime() {
+        return delayTime > 0;
     }
 
     public void cancelDelayTime() {
@@ -53,7 +55,6 @@ public class LightManager {
 
     public void setDelayMode(DelayMode val) {
         delayMode = val;
-        delayModeSubscribers.forEach(sub -> sub.accept(delayMode));
     }
 
     public void startCheckLightState() {
@@ -94,7 +95,7 @@ public class LightManager {
         else
             statusCheckDelay = Math.min(statusCheckDelay * 2, MAX_STATUS_CHECK_DELAY);
 
-        executorService.schedule(this::checkLightState, statusCheckDelay, TimeUnit.SECONDS);
+        executorService.schedule(this::checkLightState, statusCheckDelay, TimeUnit.MILLISECONDS);
     }
 
     public CompletableFuture<Boolean> on() {
@@ -169,10 +170,6 @@ public class LightManager {
 
     public void addTimeLeftSubscribers(Consumer<LightStatus> subscriber) {
         timeLeftSubscribers.add(subscriber);
-    }
-
-    public void addDelayModeSubscribers(Consumer<DelayMode> subscriber) {
-        delayModeSubscribers.add(subscriber);
     }
 
     public void addActionFailedSubscriber(Runnable subscriber) {

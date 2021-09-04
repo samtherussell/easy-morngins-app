@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -7,61 +8,59 @@
     android:background="@color/white"
     tools:context=".MainActivity">
 
-    <GridLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/delay_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:columnCount="3"
-        android:orientation="horizontal"
+        android:background="#FFFFFF"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        android:useDefaultMargins="true"
-        android:layout_gravity="center"
-        android:gravity="center"
-        >
+        app:layout_constraintStart_toStartOf="parent">
 
-        <Button
-            android:id="@+id/plus15sec"
-            android:layout_height="60sp"
-            android:text="@string/plus15sec"
-            android:textSize="20sp"
-            />
+        <GridLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:useDefaultMargins="true"
+            app:layout_constraintEnd_toStartOf="@+id/cancel_button"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
-        <Button
-            android:id="@+id/plus1min"
-            android:layout_height="60sp"
-            android:text="@string/plus1min"
-            android:textSize="20sp"
-            />
+            <Button
+                android:id="@+id/plus15sec"
+                android:layout_width="wrap_content"
+                android:layout_height="60sp"
+                android:text="@string/plus15sec"
+                />
 
-        <Button
-            android:id="@+id/plus5min"
-            android:layout_height="60sp"
-            android:text="@string/plus5min"
-            android:textSize="20sp"
-            />
+            <Button
+                android:id="@+id/plus1min"
+                android:layout_width="wrap_content"
+                android:layout_height="60sp"
+                android:text="@string/plus1min"
+                />
 
-        <Button
+            <Button
+                android:id="@+id/plus5min"
+                android:layout_width="wrap_content"
+                android:layout_height="60sp"
+                android:text="@string/plus5min"
+                android:textIsSelectable="false"
+                />
+
+        </GridLayout>
+
+        <ImageButton
             android:id="@+id/cancel_button"
-            android:text="cancel"
-            android:textSize="20sp"
-            />
+            android:layout_width="wrap_content"
+            android:layout_height="60sp"
+            android:backgroundTint="@color/purple_500"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@android:drawable/ic_menu_close_clear_cancel" />
 
-        <Button
-            android:id="@+id/fadebutton"
-            android:text="fade"
-            android:textSize="20sp"
-            android:layout_gravity="fill"
-            />
-
-        <Button
-            android:id="@+id/timerbuton"
-            android:text="timer"
-            android:textSize="20sp"
-            android:layout_gravity="fill"
-            />
-
-    </GridLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ImageView
         android:id="@+id/alarmclockimage"

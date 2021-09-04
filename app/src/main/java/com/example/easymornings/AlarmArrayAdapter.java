@@ -25,7 +25,6 @@ import androidx.annotation.Nullable;
 import com.example.easymornings.db.Alarm;
 
 import java.util.Calendar;
-import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -180,7 +179,7 @@ public class AlarmArrayAdapter extends ArrayAdapter<Alarm> {
     private void openDelayPickerDialog(Context context, String title, Supplier<Integer> currentDelay, BiConsumer<Integer, Integer> onChange) {
         final Dialog dialog = new Dialog(context);
         dialog.setTitle(title);
-        dialog.setContentView(R.layout.delay_picker_dialog);
+        dialog.setContentView(R.layout.delay_time_picker_dialog);
         Button cancel = dialog.findViewById(R.id.dialog_cancel);
         Button save = dialog.findViewById(R.id.dialog_save);
         NumberPicker minutes = dialog.findViewById(R.id.dialog_minutes);

@@ -1,13 +1,14 @@
 package com.example.easymornings;
 
-import android.app.KeyguardManager;
-import android.content.Context;
+import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -19,6 +20,8 @@ import com.example.easymornings.light.LightConnector;
 import com.example.easymornings.light.LightConnector.LightState;
 import com.example.easymornings.light.LightConnector.LightStatus;
 import com.example.easymornings.light.LightManager;
+
+import java.util.function.Consumer;
 
 import static com.example.easymornings.TimeUtils.getDelayTimeString;
 import static com.example.easymornings.TimeUtils.getTimeLeftString;
@@ -32,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     ImageView onButton, offButton;
     View delayButtons;
     Button plus15secButton, plus1minButton, plus5minButton;
-    Button cancelButton, fadeModeButton, timerModeButton;
+    ImageButton cancelButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarmActivity.class)));
 
         lightManager = new LightManager(LightConnector.Create(this));
+        lightManager.startCheckLightState();
 
         setupLightUI();
         setupDelayUI();
@@ -70,11 +74,11 @@ public class MainActivity extends AppCompatActivity {
 
         onButton = findViewById(R.id.onbutton);
         onButton.setVisibility(View.INVISIBLE);
-        onButton.setOnClickListener(v -> lightManager.on());
+        onButton.setOnClickListener(v -> on());
 
         offButton = findViewById(R.id.offbutton);
         offButton.setVisibility(View.INVISIBLE);
-        offButton.setOnClickListener(v -> lightManager.off());
+        offButton.setOnClickListener(v -> off());
 
         dimmerBar = findViewById(R.id.seekBar);
         dimmerBar.setVisibility(View.INVISIBLE);
@@ -83,15 +87,17 @@ public class MainActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
                     float level = ((float) progress) / seekBar.getMax();
-                    lightManager.setLevel(level);
+                    setLevel(level);
                 }
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
         });
 
     }
@@ -107,16 +113,10 @@ public class MainActivity extends AppCompatActivity {
         plus1minButton.setOnClickListener(v -> lightManager.addDelayTime(60));
 
         plus5minButton = findViewById(R.id.plus5min);
-        plus5minButton.setOnClickListener(v -> lightManager.addDelayTime(5*60));
+        plus5minButton.setOnClickListener(v -> lightManager.addDelayTime(5 * 60));
 
         cancelButton = findViewById(R.id.cancel_button);
         cancelButton.setOnClickListener(v -> lightManager.cancelDelayTime());
-
-        fadeModeButton = findViewById(R.id.fadebutton);
-        fadeModeButton.setOnClickListener(v -> lightManager.setDelayMode(LightManager.DelayMode.FADE));
-
-        timerModeButton = findViewById(R.id.timerbuton);
-        timerModeButton.setOnClickListener(v -> lightManager.setDelayMode(LightManager.DelayMode.TIMER));
 
         setDelayButtonVisibility(false);
     }
@@ -136,15 +136,19 @@ public class MainActivity extends AppCompatActivity {
     void updateDelayHintUiHandler(int delayTime) {
         uiHandler.post(() -> this.updateDelayHint(delayTime));
     }
+
     void updateStatusHintUiHandler(LightStatus state) {
         uiHandler.post(() -> this.updateStatusHint(state));
     }
+
     void updateDelayButtonsUiHandler(LightStatus state) {
         uiHandler.post(() -> this.updateDelayButtons(state));
     }
+
     void updateSliderUiHandler(LightStatus state) {
         uiHandler.post(() -> this.updateSlider(state));
     }
+
     void notifyActionFailedUiHandler() {
         uiHandler.post(this::notifyActionFailed);
     }
@@ -164,8 +168,6 @@ public class MainActivity extends AppCompatActivity {
         plus1minButton.setVisibility(visibility);
         plus5minButton.setVisibility(visibility);
         cancelButton.setVisibility(visibility);
-        fadeModeButton.setVisibility(visibility);
-        timerModeButton.setVisibility(visibility);
     }
 
     synchronized private void updateSlider(LightStatus state) {
@@ -205,5 +207,53 @@ public class MainActivity extends AppCompatActivity {
                 throw new RuntimeException();
         }
         statusHint.setText(message);
+    }
+
+    void on() {
+        if (lightManager.hasDelayTime()) {
+            openDelayPickerDialog(mode -> {
+                lightManager.setDelayMode(mode);
+                lightManager.on();
+            });
+        } else
+            lightManager.on();
+    }
+
+    void off() {
+        if (lightManager.hasDelayTime()) {
+            openDelayPickerDialog(mode -> {
+                lightManager.setDelayMode(mode);
+                lightManager.off();
+            });
+        } else
+            lightManager.off();
+    }
+
+    void setLevel(float level) {
+        if (lightManager.hasDelayTime()) {
+            openDelayPickerDialog(mode -> {
+                lightManager.setDelayMode(mode);
+                lightManager.setLevel(level);
+            });
+        } else
+            lightManager.setLevel(level);
+    }
+
+    private void openDelayPickerDialog(Consumer<LightManager.DelayMode> onChange) {
+        final Dialog dialog = new Dialog(this);
+        dialog.setTitle("Delay Mode");
+        dialog.setContentView(R.layout.delay_picker_dialog);
+        Button fade = dialog.findViewById(R.id.dialog_fade);
+        Button timer = dialog.findViewById(R.id.dialog_timer);
+        fade.setOnClickListener(v -> {
+            onChange.accept(LightManager.DelayMode.FADE);
+            dialog.dismiss();
+        });
+        timer.setOnClickListener(v -> {
+            onChange.accept(LightManager.DelayMode.TIMER);
+            dialog.dismiss();
+        });
+        dialog.getWindow().setGravity(Gravity.BOTTOM);
+        dialog.show();
     }
 }
