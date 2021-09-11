@@ -254,6 +254,7 @@ public class MainActivity extends AppCompatActivity {
             dialog.dismiss();
         });
         dialog.getWindow().setGravity(Gravity.BOTTOM);
+        dialog.getWindow().getAttributes().y = (int) (60 * getResources().getDisplayMetrics().scaledDensity);;
         dialog.show();
     }
 }
