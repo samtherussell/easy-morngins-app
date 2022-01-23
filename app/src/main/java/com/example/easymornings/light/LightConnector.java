@@ -106,10 +106,22 @@ public class LightConnector {
         ));
     }
 
+    public CompletableFuture<Boolean> setNow(float level, int retries) {
+        return retryer.retry(() -> rateLimiter.limit(() ->
+                CompletableFuture.supplyAsync(() -> postAndCheck(setNowURI(level)), executor)
+        ), retries);
+    }
+
     public CompletableFuture<Boolean> fade(float level, int period) {
         return retryer.retry(() -> rateLimiter.limit(() ->
                 CompletableFuture.supplyAsync(() -> postAndCheck(fadeURI(level, period)), executor)
         ));
+    }
+
+    public CompletableFuture<Boolean> fade(float level, int period, int retries) {
+        return retryer.retry(() -> rateLimiter.limit(() ->
+                CompletableFuture.supplyAsync(() -> postAndCheck(fadeURI(level, period)), executor)
+        ), retries);
     }
 
     public CompletableFuture<Boolean> timer(float level, int period) {
@@ -191,7 +203,7 @@ public class LightConnector {
         }
     }
 
-    String execute(HttpRequestBase request) throws IOException {
+    synchronized String execute(HttpRequestBase request) throws IOException {
         CloseableHttpClient httpClient = HttpClients.createDefault();
         request.setConfig(RequestConfig.custom().setConnectTimeout(1500).build());
         CloseableHttpResponse response = httpClient.execute(request);
@@ -228,22 +240,22 @@ public class LightConnector {
     static class Retryer {
         private static final int RETIRES = 5;
         CompletableFuture<Boolean> retry(Supplier<CompletableFuture<Boolean>> supplier) {
-            return supplier.get().thenCompose(success -> {
-                if (success)
-                    return CompletableFuture.completedFuture(success);
-                else
-                    return retry(supplier, RETIRES - 1);
-            });
+            return retry(supplier, RETIRES);
         }
 
         CompletableFuture<Boolean> retry(Supplier<CompletableFuture<Boolean>> supplier, int n) {
             return supplier.get().thenCompose(success -> {
                 if (success)
                     return CompletableFuture.completedFuture(success);
-                else if (n > 1)
-                    return retry(supplier, n - 1);
-                else
-                    return CompletableFuture.completedFuture(false);
+                else {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ignored) {}
+                    if (n > 1)
+                        return retry(supplier, n - 1);
+                    else
+                        return CompletableFuture.completedFuture(false);
+                }
             });
         }
     }
