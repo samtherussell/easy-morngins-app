@@ -62,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
         uiHandler = new Handler(Looper.myLooper());
         lightManager.addLightStateSubscriber(this::updateStatusHintUiHandler);
         lightManager.addLightStateSubscriber(this::updateDelayButtonsUiHandler);
+        lightManager.addLightStateSubscriber(this::setDelayHintVisibilityUiHandler);
+        lightManager.addLightStateSubscriber(this::updateSliderUiHandler);
         lightManager.addLightLevelSubscriber(this::updateSliderUiHandler);
         lightManager.addDelayTimeSubscriber(this::updateDelayHintUiHandler);
         lightManager.addTimeLeftSubscribers(this::updateStatusHintUiHandler);
@@ -133,6 +135,10 @@ public class MainActivity extends AppCompatActivity {
         lightManager.stopCheckLightState();
     }
 
+    private void setDelayHintVisibilityUiHandler(LightStatus lightStatus) {
+        uiHandler.post(() -> this.setDelayHintVisibility(lightStatus));
+    }
+
     void updateDelayHintUiHandler(int delayTime) {
         uiHandler.post(() -> this.updateDelayHint(delayTime));
     }
@@ -180,11 +186,19 @@ public class MainActivity extends AppCompatActivity {
             dimmerBar.setProgress((int) (dimmerBar.getMax() * state.getLightLevel()), false);
     }
 
-    synchronized void updateDelayHint(int delayTime) {
+    synchronized private void updateDelayHint(int delayTime) {
         if (delayTime == -1)
             delayHint.setText("");
         else
             delayHint.setText(getDelayTimeString(delayTime));
+    }
+
+    synchronized private void setDelayHintVisibility(LightStatus lightStatus) {
+        if (lightStatus.getLightState().equals(LightState.NOT_CONNECTED)) {
+            delayHint.setVisibility(View.INVISIBLE);
+        } else {
+            delayHint.setVisibility(View.VISIBLE);
+        }
     }
 
     synchronized void updateStatusHint(LightStatus state) {

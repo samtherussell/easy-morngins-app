@@ -53,6 +53,10 @@ public class LightManager {
         delayTimeSubscribers.forEach(sub -> sub.accept(delayTime));
     }
 
+    public int getDelayTime() {
+        return delayTime;
+    }
+
     public void setDelayMode(DelayMode val) {
         delayMode = val;
     }
