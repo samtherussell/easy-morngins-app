@@ -1,8 +1,9 @@
 package com.example.easymornings;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 
-class TimeUtils {
+public class TimeUtils {
     static int getSecond(long time) {
         return (int) (time % 60);
     }
@@ -21,6 +22,11 @@ class TimeUtils {
 
     static int getTimestamp(int hour, int minute) {
         return (hour * 60 + minute) * 60;
+    }
+
+    public static int getNowTimestamp() {
+        Calendar calendar = Calendar.getInstance();
+        return getTimestamp(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE));
     }
 
     static int getSecondsUntil(long epocMilli) {
@@ -84,5 +90,17 @@ class TimeUtils {
             return "15 sec";
         else
             return "few sec";
+    }
+
+    static String getDateTimeString(long timestamp) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(timestamp);
+        return String.format("%d-%02d-%02d %02d:%02d:%02d",
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH)+1,
+                calendar.get(Calendar.DAY_OF_MONTH),
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+                calendar.get(Calendar.SECOND));
     }
 }

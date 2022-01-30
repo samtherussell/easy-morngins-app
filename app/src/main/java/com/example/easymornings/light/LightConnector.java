@@ -251,9 +251,10 @@ public class LightConnector {
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException ignored) {}
-                    if (n > 1)
+                    if (n > 1) {
+                        Log.w("FADE ON TEST", "Request failed, retrying");
                         return retry(supplier, n - 1);
-                    else
+                    } else
                         return CompletableFuture.completedFuture(false);
                 }
             });

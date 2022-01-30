@@ -96,14 +96,11 @@ public class AlarmScheduler {
         if (alarm.fadeOnDelay != null && alarm.alarmTime != null && alarm.enabled && alarm.anyDayEnabled()) {
             int onTime = alarm.alarmTime - alarm.fadeOnDelay;
             Long nextAlarmMillis = getNextAlarmMillis(onTime, alarm::isDayEnabled);
-            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextFadeIn - set");
-            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
-            Log.println(Log.DEBUG, "AlarmScheduler", Long.toString(nextAlarmMillis));
+            Log.w("FADE ON TEST", "scheduleNextFadeIn - set:" + TimeUtils.getDateTimeString(nextAlarmMillis));
             alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(nextAlarmMillis, null), pendingIntent);
             return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
-            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextFadeIn - remove");
-            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
+            Log.w("FADE ON TEST", "scheduleNextFadeIn - remove");
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
         }
@@ -116,14 +113,11 @@ public class AlarmScheduler {
         PendingIntent pendingIntent = PendingIntent.getActivity(context, getAlarmSoundRequestCode(alarm.uid), intent, PendingIntent.FLAG_UPDATE_CURRENT);
         if (alarm.enabled && alarm.alarmTime != null && alarm.anyDayEnabled()) {
             Long nextAlarmMillis = getNextAlarmMillis(alarm.alarmTime, alarm::isDayEnabled);
-            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextAlarm");
-            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
-            Log.println(Log.DEBUG, "AlarmScheduler", Long.toString(nextAlarmMillis));
+            Log.w("FADE ON TEST", "scheduleNextAlarm - set:" + TimeUtils.getDateTimeString(nextAlarmMillis));
             alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(nextAlarmMillis, null), pendingIntent);
             return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
-            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextAlarm - remove");
-            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
+            Log.w("FADE ON TEST","scheduleNextAlarm - remove");
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
         }
@@ -136,14 +130,11 @@ public class AlarmScheduler {
         if (alarm.offDelay != null && alarm.alarmTime != null && alarm.enabled && alarm.anyDayEnabled()) {
             int offTime = alarm.alarmTime + alarm.offDelay;
             Long nextAlarmMillis = getNextAlarmMillis(offTime, alarm::isDayEnabled);
-            Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextOff");
-            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
-            Log.println(Log.DEBUG, "AlarmScheduler", Long.toString(nextAlarmMillis));
+            Log.w("FADE ON TEST", "scheduleNextOff - set:" + TimeUtils.getDateTimeString(nextAlarmMillis));
             alarmManager.setAlarmClock(new AlarmManager.AlarmClockInfo(nextAlarmMillis, null), pendingIntent);
             return Optional.of(TimeUtils.getSecondsUntil(nextAlarmMillis));
         } else {
             Log.println(Log.DEBUG, "AlarmScheduler", "scheduleNextOff - remove");
-            Log.println(Log.DEBUG, "AlarmScheduler", pendingIntent.toString());
             alarmManager.cancel(pendingIntent);
             return Optional.empty();
         }
