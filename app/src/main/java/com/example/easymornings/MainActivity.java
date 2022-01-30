@@ -10,6 +10,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,6 +23,7 @@ import com.example.easymornings.light.LightConnector.LightState;
 import com.example.easymornings.light.LightConnector.LightStatus;
 import com.example.easymornings.light.LightManager;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import static com.example.easymornings.TimeUtils.getDelayTimeString;
@@ -36,6 +39,8 @@ public class MainActivity extends AppCompatActivity {
     View delayButtons;
     Button plus15secButton, plus1minButton, plus5minButton;
     ImageButton cancelButton;
+    Dialog pendingSpinner;
+    final int PENDING_SPINNER_DELAY = 300;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -227,31 +232,74 @@ public class MainActivity extends AppCompatActivity {
         if (lightManager.hasDelayTime()) {
             openDelayPickerDialog(mode -> {
                 lightManager.setDelayMode(mode);
-                lightManager.on();
+                CompletableFuture<Void> runningRequest = lightManager.on().thenRun(() -> uiHandler.post(this::cancelSpinner));
+                uiHandler.postDelayed(() -> this.showSpinner(runningRequest), PENDING_SPINNER_DELAY);
             });
-        } else
-            lightManager.on();
+        } else {
+            CompletableFuture<Void> runningRequest = lightManager.on().thenRun(() -> uiHandler.post(this::cancelSpinner));
+            uiHandler.postDelayed(() -> this.showSpinner(runningRequest), PENDING_SPINNER_DELAY);
+        }
     }
 
     void off() {
         if (lightManager.hasDelayTime()) {
             openDelayPickerDialog(mode -> {
                 lightManager.setDelayMode(mode);
-                lightManager.off();
+                CompletableFuture<Void> runningRequest = lightManager.off().thenRun(() -> uiHandler.post(this::cancelSpinner));
+                uiHandler.postDelayed(() -> this.showSpinner(runningRequest), PENDING_SPINNER_DELAY);
             });
-        } else
-            lightManager.off();
+        } else {
+            CompletableFuture<Void> runningRequest = lightManager.off().thenRun(() -> uiHandler.post(this::cancelSpinner));
+            uiHandler.postDelayed(() -> this.showSpinner(runningRequest), PENDING_SPINNER_DELAY);
+        }
     }
 
     void setLevel(float level) {
         if (lightManager.hasDelayTime()) {
             openDelayPickerDialog(mode -> {
                 lightManager.setDelayMode(mode);
-                lightManager.setLevel(level);
+                CompletableFuture<Void> runningRequest = lightManager.setLevel(level).thenRun(() -> uiHandler.post(this::cancelSpinner));
+                uiHandler.postDelayed(() -> this.showSpinner(runningRequest), PENDING_SPINNER_DELAY);
             });
-        } else
-            lightManager.setLevel(level);
+        } else{
+            CompletableFuture<Void> runningRequest = lightManager.setLevel(level).thenRun(() -> uiHandler.post(this::cancelSpinner));
+            uiHandler.postDelayed(() -> this.showSpinner(runningRequest), PENDING_SPINNER_DELAY);
+        }
     }
+
+    synchronized private void showSpinner(CompletableFuture<Void> runningRequest) {
+        if (!runningRequest.isDone() && this.pendingSpinner == null) {
+            final Dialog dialog = new Dialog(this);
+            ProgressBar spinner = new ProgressBar(this, null, android.R.attr.progressBarStyleLarge);
+            LinearLayout view = new LinearLayout(this);
+            view.setOrientation(LinearLayout.VERTICAL);
+            view.addView(spinner);
+            Button cancel = new Button(this);
+            cancel.setText("Cancel");
+            cancel.setOnClickListener(v -> {
+                dialog.dismiss();
+            });
+            view.addView(cancel);
+            dialog.setContentView(view);
+            dialog.getWindow().setGravity(Gravity.CENTER);
+            dialog.setOnDismissListener(d -> {
+                if (!runningRequest.isDone())
+                    runningRequest.cancel(true);
+                this.pendingSpinner = null;
+            });
+            dialog.setCancelable(false);
+            dialog.show();
+            this.pendingSpinner = dialog;
+        }
+    }
+
+    private void cancelSpinner() {
+        if (pendingSpinner != null) {
+            pendingSpinner.dismiss();
+            pendingSpinner = null;
+        }
+    }
+
 
     private void openDelayPickerDialog(Consumer<LightManager.DelayMode> onChange) {
         final Dialog dialog = new Dialog(this);

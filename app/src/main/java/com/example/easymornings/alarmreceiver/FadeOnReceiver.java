@@ -16,7 +16,7 @@ public class FadeOnReceiver extends AlarmReceiver {
         LightConnector lightConnector = new LightConnector(() -> preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
         alarm.thenAccept(a -> {
-            lightConnector.fade(1, a.fadeOnDelay).thenAccept((success) -> {
+            lightConnector.fade(1, a.fadeOnDelay, 50).thenAccept((success) -> {
                 if (!success)
                     NotificationUtils.displayProblemNotification(context, "Could not fade on", NotificationUtils.FADE_ON_RECEIVER_PROBLEM);
             });

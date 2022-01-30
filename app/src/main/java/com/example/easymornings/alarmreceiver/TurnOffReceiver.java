@@ -15,7 +15,7 @@
 
         LightConnector lightConnector = new LightConnector(() -> preferencesConnector.getString(AppPreferenceValues.SHARED_PREFERENCES_IP_ADDRESS, ""));
 
-        lightConnector.setNow(0).thenAccept((success) -> {
+        lightConnector.setNow(0, 50).thenAccept((success) -> {
             if (!success)
                 NotificationUtils.displayProblemNotification(context, "Could not turn off", NotificationUtils.TURN_OFF_RECEIVER_PROBLEM);
         });
