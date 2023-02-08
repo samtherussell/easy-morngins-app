@@ -1,7 +1,9 @@
 package com.example.easymornings;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -22,12 +24,16 @@ import com.example.easymornings.light.LightConnector;
 import com.example.easymornings.light.LightConnector.LightState;
 import com.example.easymornings.light.LightConnector.LightStatus;
 import com.example.easymornings.light.LightManager;
+import com.example.easymornings.preference.AppPreferenceValues;
+import com.example.easymornings.preference.PreferencesConnector;
+import com.example.easymornings.preference.SharedPreferencesConnector;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import static com.example.easymornings.TimeUtils.getDelayTimeString;
 import static com.example.easymornings.TimeUtils.getTimeLeftString;
+import static com.example.easymornings.preference.AppPreferenceValues.SHARED_PREFERENCES_AUTO_REFRESH;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -40,18 +46,28 @@ public class MainActivity extends AppCompatActivity {
     Button plus15secButton, plus1minButton, plus5minButton;
     ImageButton cancelButton;
     Dialog pendingSpinner;
+    PreferencesConnector preferencesConnector;
     final int PENDING_SPINNER_DELAY = 300;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        SharedPreferences sharedPreferences = getApplicationContext().getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
+        this.preferencesConnector = new SharedPreferencesConnector(sharedPreferences);
 
         findViewById(R.id.settings).setOnClickListener((v) -> startActivity(new Intent(this, SettingsActivity.class)));
         findViewById(R.id.clockTime).setOnClickListener((v) -> startActivity(new Intent(this, SetAlarmActivity.class)));
 
-        lightManager = new LightManager(LightConnector.Create(this));
-        lightManager.startCheckLightState();
+        lightManager = new LightManager(LightConnector.Create(this), this.preferencesConnector);
+
+        lightManager.checkLightState();
+        if (this.preferencesConnector.getBool(SHARED_PREFERENCES_AUTO_REFRESH, true))
+            lightManager.startCheckLightState();
+
+        findViewById(R.id.refresh).setOnClickListener((v) -> {
+            lightManager.checkLightState();
+        });
 
         setupLightUI();
         setupDelayUI();
@@ -126,7 +142,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        lightManager.startCheckLightState();
+        lightManager.checkLightState();
+        if (this.preferencesConnector.getBool(SHARED_PREFERENCES_AUTO_REFRESH, true))
+            lightManager.startCheckLightState();
     }
 
     @Override

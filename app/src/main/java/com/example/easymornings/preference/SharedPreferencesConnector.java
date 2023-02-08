@@ -18,4 +18,24 @@ public class SharedPreferencesConnector implements PreferencesConnector {
     public void setString(String name, String value) {
         sharedPreferences.edit().putString(name, value).apply();
     }
+
+    @Override
+    public boolean getBool(String name, boolean defaultValue) {
+        return sharedPreferences.getBoolean(name, defaultValue);
+    }
+
+    @Override
+    public void setBool(String name, boolean value) {
+        sharedPreferences.edit().putBoolean(name, value).apply();
+    }
+
+    @Override
+    public int getInt(String name, int defaultValue) {
+        return sharedPreferences.getInt(name, defaultValue);
+    }
+
+    @Override
+    public void setInt(String name, int value) {
+        sharedPreferences.edit().putInt(name, value).apply();
+    }
 }

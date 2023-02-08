@@ -3,6 +3,7 @@ package com.example.easymornings;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -24,11 +25,15 @@ import com.example.easymornings.light.LightConnector;
 import com.example.easymornings.light.LightConnector.LightState;
 import com.example.easymornings.light.LightConnector.LightStatus;
 import com.example.easymornings.light.LightManager;
+import com.example.easymornings.preference.AppPreferenceValues;
+import com.example.easymornings.preference.PreferencesConnector;
+import com.example.easymornings.preference.SharedPreferencesConnector;
 
 import static com.example.easymornings.AlarmScheduler.COMMAND_EXTRA;
 import static com.example.easymornings.AlarmScheduler.SLEEP_SOUND_COMMAND;
 import static com.example.easymornings.AlarmScheduler.SOUND_START_COMMAND;
 import static com.example.easymornings.AlarmScheduler.UID_EXTRA;
+import static com.example.easymornings.preference.AppPreferenceValues.SHARED_PREFERENCES_AUTO_REFRESH;
 
 public class AlarmActivity extends AppCompatActivity {
 
@@ -39,6 +44,7 @@ public class AlarmActivity extends AppCompatActivity {
     Button dismissButton, sleepButton;
     MediaPlayer mediaPlayer;
     AlarmScheduler alarmScheduler;
+    PreferencesConnector preferencesConnector;
     Alarm alarm;
 
     @Override
@@ -46,9 +52,18 @@ public class AlarmActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setupWakeUp();
         setContentView(R.layout.activity_alarm);
+        SharedPreferences sharedPreferences = getApplicationContext().getSharedPreferences(AppPreferenceValues.SHARED_PREFERENCES_FILE, Context.MODE_PRIVATE);
+        this.preferencesConnector = new SharedPreferencesConnector(sharedPreferences);
 
-        lightManager = new LightManager(LightConnector.Create(this));
-        lightManager.startCheckLightState();
+        lightManager = new LightManager(LightConnector.Create(this), this.preferencesConnector);
+        lightManager.checkLightState();
+        if (this.preferencesConnector.getBool(SHARED_PREFERENCES_AUTO_REFRESH, true))
+            lightManager.startCheckLightState();
+
+        findViewById(R.id.refresh).setOnClickListener((v) -> {
+            lightManager.checkLightState();
+        });
+
         alarmScheduler = AlarmScheduler.create(getApplicationContext());
 
         setupLightUI();
@@ -108,7 +123,9 @@ public class AlarmActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        lightManager.startCheckLightState();
+        lightManager.checkLightState();
+        if (this.preferencesConnector.getBool(SHARED_PREFERENCES_AUTO_REFRESH, true))
+            lightManager.startCheckLightState();
     }
 
     @Override

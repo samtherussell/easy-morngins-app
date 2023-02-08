@@ -29,14 +29,43 @@
             android:textAlignment="center"
             />
 
-        <EditText
-            android:id="@+id/ipaddress"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/ip_address_hint"
-            android:importantForAutofill="no"
-            android:inputType="number"
-            android:digits="0123456789."
+            android:orientation="horizontal"
+            android:weightSum="3"
+            >
+
+            <EditText
+                android:id="@+id/ipaddress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/ip_address_hint"
+                android:importantForAutofill="no"
+                android:inputType="number"
+                android:digits="0123456789."
+                />
+
+            <Button
+                android:id="@+id/check"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/test_connection"
+                android:layout_weight="2"
+                tools:ignore="ButtonStyle"
+                android:layout_margin="5sp"
+                />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/refresh_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/refresh_title"
+            android:textSize="25sp"
+            android:textAlignment="center"
             />
 
         <LinearLayout
@@ -45,29 +74,32 @@
             android:orientation="horizontal"
             android:weightSum="3"
             >
-
-            <Button
-                android:id="@+id/check"
+            <Switch
+                android:id="@+id/auto_refresh"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/test_connection"
-                android:layout_weight="2"
-                tools:ignore="ButtonStyle"
-                android:layout_margin="5sp"
+                android:text="Auto Refresh"
                 />
 
-            <Button
-                android:id="@+id/save"
-                android:layout_width="wrap_content"
+            <EditText
+                android:id="@+id/auto_refresh_time"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/save"
-                android:layout_weight="1"
-                tools:ignore="ButtonStyle"
-                android:layout_margin="5sp"
-                />
-
+                android:ems="10"
+                android:inputType="number" />
         </LinearLayout>
 
+        <Button
+            android:id="@+id/save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/save"
+            tools:ignore="ButtonStyle"
+            android:layout_margin="5sp"
+            />
+
     </LinearLayout>
+
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -2,6 +2,8 @@ package com.example.easymornings.light;
 
 import com.example.easymornings.light.LightConnector.LightStatus;
 import com.example.easymornings.light.LightConnector.LightState;
+import com.example.easymornings.preference.AppPreferenceValues;
+import com.example.easymornings.preference.PreferencesConnector;
 
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -23,6 +25,7 @@ public class LightManager {
     private int delayTime;
     private DelayMode delayMode;
     private LightStatus lightStatus;
+    PreferencesConnector preferencesConnector;
 
     final ArrayList<Consumer<Integer>> delayTimeSubscribers = new ArrayList<>();
     final ArrayList<Consumer<LightStatus>> lightStateSubscribers = new ArrayList<>();
@@ -32,9 +35,10 @@ public class LightManager {
 
     public enum DelayMode {FADE, TIMER};
 
-    public LightManager(LightConnector lightConnector) {
+    public LightManager(LightConnector lightConnector, PreferencesConnector preferencesConnector) {
         this.executorService = Executors.newSingleThreadScheduledExecutor();
         this.lightConnector = lightConnector;
+        this.preferencesConnector = preferencesConnector;
         this.delayTime = 0;
         this.delayMode = DelayMode.TIMER;
     }
@@ -63,7 +67,7 @@ public class LightManager {
 
     public void startCheckLightState() {
         checkLightStateFlag = true;
-        checkLightState();
+        scheduleNextRun(true);
     }
 
     public void stopCheckLightState() {
@@ -98,6 +102,8 @@ public class LightManager {
             statusCheckDelay = MIN_STATUS_CHECK_DELAY;
         else
             statusCheckDelay = Math.min(statusCheckDelay * 2, MAX_STATUS_CHECK_DELAY);
+
+        statusCheckDelay = Math.max(statusCheckDelay, this.preferencesConnector.getInt(AppPreferenceValues.SHARED_PREFERENCES_AUTO_REFRESH_TIME, 100));
 
         executorService.schedule(this::checkLightState, statusCheckDelay, TimeUnit.MILLISECONDS);
     }
