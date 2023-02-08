@@ -45,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setupWakeUp();
         setContentView(R.layout.activity_main);
 
         findViewById(R.id.settings).setOnClickListener((v) -> startActivity(new Intent(this, SettingsActivity.class)));
@@ -57,10 +56,6 @@ public class MainActivity extends AppCompatActivity {
         setupLightUI();
         setupDelayUI();
         setupSubscribers();
-    }
-
-    private void setupWakeUp() {
-        setShowWhenLocked(true);
     }
 
     private void setupSubscribers() {
